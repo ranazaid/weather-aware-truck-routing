@@ -1,5 +1,14 @@
 import clsx from "clsx";
-import { ArrowDownUp, CalendarClock, Flag, Loader2, Navigation, Route as RouteIcon, Weight } from "lucide-react";
+import {
+  ArrowDownUp,
+  CalendarClock,
+  FlaskConical,
+  Flag,
+  Loader2,
+  Navigation,
+  Route as RouteIcon,
+  Weight,
+} from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import type { PlanRequest } from "../api/types";
 import { fromLocalInput, nextQuarterHour, toLocalInput } from "../lib/format";
@@ -69,6 +78,9 @@ export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
   const [load, setLoad] = useState("38000");
   const [interval, setInterval] = useState<(typeof INTERVALS)[number]>(25);
   const [hos, setHos] = useState(true);
+  const [windAdd, setWindAdd] = useState(0);
+  const [precipX, setPrecipX] = useState(1);
+  const whatIf = windAdd > 0 || precipX > 1;
   const [touched, setTouched] = useState(false);
 
   const errors = useMemo(
@@ -90,6 +102,7 @@ export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
       load_lb: Number(load),
       interval_mi: interval,
       hos,
+      scenario: whatIf ? { wind_add_mph: windAdd, precip_factor: precipX } : null,
     });
   };
 
@@ -164,7 +177,10 @@ export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
             Departure
           </label>
           <div className="relative">
-            <CalendarClock size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-400" />
+            <CalendarClock
+              size={15}
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-400"
+            />
             <input
               id="departure"
               type="datetime-local"
@@ -211,7 +227,9 @@ export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
               aria-invalid={!!shown("load_lb")}
               aria-describedby="load-help"
             />
-            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-ink-500">lb</span>
+            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-ink-500">
+              lb
+            </span>
           </div>
           <div id="load-help" className="mt-1.5 flex flex-wrap gap-1">
             {LOAD_PRESETS.map((lb) => (
@@ -254,12 +272,7 @@ export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
       </fieldset>
 
       <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-ink-700 bg-ink-850/60 p-3">
-        <input
-          type="checkbox"
-          className="peer sr-only"
-          checked={hos}
-          onChange={(e) => setHos(e.target.checked)}
-        />
+        <input type="checkbox" className="peer sr-only" checked={hos} onChange={(e) => setHos(e.target.checked)} />
         <span
           aria-hidden
           className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-ink-600 transition-colors peer-checked:bg-accent-strong peer-focus-visible:ring-2 peer-focus-visible:ring-accent after:absolute after:top-0.5 after:left-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4"
@@ -267,11 +280,67 @@ export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
         <span className="text-sm">
           <span className="font-medium text-ink-100">Driver hours-of-service</span>
           <span className="mt-0.5 block text-xs leading-relaxed text-ink-400">
-            FMCSA 30-min break after 8 h and 10-h reset after 11 h of driving, so each checkpoint's weather is read
-            when the truck is actually there.
+            FMCSA 30-min break after 8 h and 10-h reset after 11 h of driving, so each checkpoint's weather is read when
+            the truck is actually there.
           </span>
         </span>
       </label>
+
+      <details className="group rounded-lg border border-ink-700 bg-ink-850/40">
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm text-ink-300 hover:text-white">
+          <FlaskConical size={14} />
+          What-if weather
+          {whatIf && <span className="chip ml-auto bg-risk-no_travel/15 text-risk-no_travel">simulated</span>}
+        </summary>
+        <div className="space-y-3 border-t border-ink-700 px-3 pt-2.5 pb-3">
+          <p className="text-[11px] leading-relaxed text-ink-400">
+            Stress-test the plan: add wind and scale precipitation on top of the real forecast. Results are clearly
+            marked as simulated.
+          </p>
+          <label className="block text-xs text-ink-300">
+            <span className="flex justify-between">
+              Extra wind <span className="num text-ink-100">+{windAdd} mph</span>
+            </span>
+            <input
+              type="range"
+              className="slider mt-2"
+              min={0}
+              max={40}
+              step={1}
+              value={windAdd}
+              onChange={(e) => setWindAdd(Number(e.target.value))}
+              aria-label="Extra wind in mph"
+            />
+          </label>
+          <label className="block text-xs text-ink-300">
+            <span className="flex justify-between">
+              Rain and snow <span className="num text-ink-100">×{precipX.toFixed(1)}</span>
+            </span>
+            <input
+              type="range"
+              className="slider mt-2"
+              min={1}
+              max={5}
+              step={0.5}
+              value={precipX}
+              onChange={(e) => setPrecipX(Number(e.target.value))}
+              aria-label="Precipitation multiplier"
+            />
+          </label>
+          {whatIf && (
+            <button
+              type="button"
+              className="text-[11px] text-accent hover:underline"
+              onClick={() => {
+                setWindAdd(0);
+                setPrecipX(1);
+              }}
+            >
+              Reset to the real forecast
+            </button>
+          )}
+        </div>
+      </details>
 
       <button type="submit" className="btn-primary w-full py-2.5" disabled={loading}>
         {loading ? <Loader2 size={16} className="animate-spin" /> : <RouteIcon size={16} />}

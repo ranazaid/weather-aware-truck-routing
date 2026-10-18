@@ -36,6 +36,11 @@ class PlaceField(serializers.Field):
         return value
 
 
+class ScenarioSerializer(serializers.Serializer):
+    wind_add_mph = serializers.FloatField(min_value=0, max_value=40, default=0)
+    precip_factor = serializers.FloatField(min_value=1, max_value=5, default=1)
+
+
 class PlanRequestSerializer(serializers.Serializer):
     origin = PlaceField()
     destination = PlaceField()
@@ -43,6 +48,7 @@ class PlanRequestSerializer(serializers.Serializer):
     load_lb = serializers.FloatField(min_value=0, max_value=MAX_LOAD_LB)
     interval_mi = serializers.ChoiceField(choices=ALLOWED_INTERVALS_MI, default=25)
     hos = serializers.BooleanField(default=True)
+    scenario = ScenarioSerializer(required=False, allow_null=True, default=None)
 
     def validate_departure(self, value: datetime) -> datetime:
         now = datetime.now(UTC)

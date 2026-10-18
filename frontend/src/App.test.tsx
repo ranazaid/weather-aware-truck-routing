@@ -34,7 +34,9 @@ const heatmap = {
 };
 
 function json(body: unknown, status = 200) {
-  return Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }));
+  return Promise.resolve(
+    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
+  );
 }
 
 function renderApp() {
@@ -72,7 +74,10 @@ describe("App", () => {
     // recommended route is selected on the map and in the cards
     expect(screen.getByTestId("map")).toHaveAttribute("data-selected", "C");
     const cards = screen.getByRole("list", { name: /route options/i });
-    expect(within(cards).getByRole("button", { name: /route c.*recommended/i })).toHaveAttribute("aria-pressed", "true");
+    expect(within(cards).getByRole("button", { name: /route c.*recommended/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(screen.getByRole("heading", { name: /route c checkpoints/i })).toBeInTheDocument();
 
     // heatmap is fetched separately and reaches the map
@@ -86,13 +91,18 @@ describe("App", () => {
     expect(screen.getByTestId("map")).toHaveAttribute("data-selected", "B");
 
     // the form collapses to a summary that can be reopened
+    expect(screen.queryByRole("form", { name: /trip details/i })).not.toBeInTheDocument(); // hidden
     await userEvent.click(screen.getByRole("button", { name: /edit/i }));
     expect(screen.getByRole("form", { name: /trip details/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/load weight/i)).toHaveValue(38000); // inputs survive collapsing
   });
 
   it("shows server errors with retry for provider failures", async () => {
     fetchMock.mockImplementationOnce(() =>
-      json({ error: { code: "provider_error", message: "OSRM routing is unreachable right now; please try again" } }, 502),
+      json(
+        { error: { code: "provider_error", message: "OSRM routing is unreachable right now; please try again" } },
+        502,
+      ),
     );
     renderApp();
     await userEvent.click(screen.getByRole("button", { name: /plan routes/i }));
@@ -103,7 +113,16 @@ describe("App", () => {
 
   it("maps validation errors onto fields without a retry button", async () => {
     fetchMock.mockImplementationOnce(() =>
-      json({ error: { code: "invalid", message: "Departure cannot be in the past.", fields: { departure: ["Departure cannot be in the past."] } } }, 400),
+      json(
+        {
+          error: {
+            code: "invalid",
+            message: "Departure cannot be in the past.",
+            fields: { departure: ["Departure cannot be in the past."] },
+          },
+        },
+        400,
+      ),
     );
     renderApp();
     await userEvent.click(screen.getByRole("button", { name: /plan routes/i }));

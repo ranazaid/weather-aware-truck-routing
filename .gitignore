@@ -14,3 +14,6 @@ frontend/coverage/
 
 # The assessment brief is Spotter's document: kept locally, never published
 docs/*.pdf
+
+# private notes for the author
+.local/

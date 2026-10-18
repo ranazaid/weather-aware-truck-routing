@@ -27,9 +27,7 @@ export function truckState(route: PlannedRoute, elapsed: number): TruckState | n
   if (!coord) return null;
   if (elapsed < 0) return { coord, status: "not_departed" };
   if (elapsed >= route.duration_s) return { coord, status: "arrived" };
-  const parked = route.stops.some(
-    (s) => elapsed >= s.start_elapsed_s && elapsed < s.start_elapsed_s + s.duration_s,
-  );
+  const parked = route.stops.some((s) => elapsed >= s.start_elapsed_s && elapsed < s.start_elapsed_s + s.duration_s);
   return { coord, status: parked ? "parked" : "driving" };
 }
 

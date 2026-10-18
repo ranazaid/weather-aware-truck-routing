@@ -131,6 +131,7 @@ export interface PlanRequest {
   load_lb: number;
   interval_mi: 10 | 25 | 50;
   hos: boolean;
+  scenario?: { wind_add_mph: number; precip_factor: number } | null;
 }
 
 export interface Plan {
@@ -144,6 +145,7 @@ export interface Plan {
     interval_mi: number;
     hos: boolean;
     truck_speed_cap_mph: number;
+    scenario: { wind_add_mph: number; precip_factor: number; text: string } | null;
   };
   forecast_window: { start: string; end: string };
   routes: PlannedRoute[];

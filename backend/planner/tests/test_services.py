@@ -17,8 +17,11 @@ A, B = (-100.0, 35.0), (-96.0, 35.0)
 
 @responses.activate
 def test_three_routes_from_osrm_alternatives():
-    alts = [fakes.line(A, B), fakes.line(A, (-98, 36.0), 60) + fakes.line((-98, 36.0), B, 60)[1:],
-            fakes.line(A, (-98, 34.0), 60) + fakes.line((-98, 34.0), B, 60)[1:]]
+    alts = [
+        fakes.line(A, B),
+        fakes.line(A, (-98, 36.0), 60) + fakes.line((-98, 36.0), B, 60)[1:],
+        fakes.line(A, (-98, 34.0), 60) + fakes.line((-98, 34.0), B, 60)[1:],
+    ]
     responses.add_callback(responses.GET, fakes.OSRM, callback=fakes.osrm_callback(alts))
     routes, warnings = routing.get_routes(A, B)
     assert [r.variant for r in routes] == ["fastest", "alternative", "alternative"]
@@ -90,8 +93,15 @@ def test_cell_snapping():
 
 def _series(wind, rain=None):
     n = len(wind)
-    return weather.Series(0, tuple(wind), tuple(None if w is None else w + 5 for w in wind), tuple(rain or [0.0] * n),
-                          tuple([0.0] * n), tuple([40.0] * n), tuple([0] * n))
+    return weather.Series(
+        0,
+        tuple(wind),
+        tuple(None if w is None else w + 5 for w in wind),
+        tuple(rain or [0.0] * n),
+        tuple([0.0] * n),
+        tuple([40.0] * n),
+        tuple([0] * n),
+    )
 
 
 def test_sample_interpolates_wind_and_uses_clock_hour_for_precip():
@@ -193,12 +203,18 @@ def test_photon_results_and_fallback():
 @responses.activate
 def test_photon_labels_and_dedupe():
     feats = [
-        {"geometry": {"coordinates": [-96.79, 32.77]},
-         "properties": {"name": "Dallas", "state": "Texas", "countrycode": "US", "type": "city"}},
-        {"geometry": {"coordinates": [-96.78, 32.76]},
-         "properties": {"name": "Dallas", "state": "Texas", "countrycode": "US", "type": "county"}},
-        {"geometry": {"coordinates": [-96.79, 32.77]},
-         "properties": {"name": "Dallas", "state": "Texas", "countrycode": "US", "type": "city"}},
+        {
+            "geometry": {"coordinates": [-96.79, 32.77]},
+            "properties": {"name": "Dallas", "state": "Texas", "countrycode": "US", "type": "city"},
+        },
+        {
+            "geometry": {"coordinates": [-96.78, 32.76]},
+            "properties": {"name": "Dallas", "state": "Texas", "countrycode": "US", "type": "county"},
+        },
+        {
+            "geometry": {"coordinates": [-96.79, 32.77]},
+            "properties": {"name": "Dallas", "state": "Texas", "countrycode": "US", "type": "city"},
+        },
     ]
     responses.add(responses.GET, "https://photon.komoot.io/api/", json={"features": feats})
     labels = [r["label"] for r in geocoding.search("Dallas")]

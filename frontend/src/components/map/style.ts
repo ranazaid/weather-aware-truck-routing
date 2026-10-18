@@ -54,17 +54,7 @@ export function heatOpacity(metric: HeatMetric): ExpressionSpecification {
 }
 
 /** Cells are 12–40 miles apart; grow the radius with zoom so neighbours always blend into a field. */
-export const heatRadius: ExpressionSpecification = [
-  "interpolate",
-  ["exponential", 2],
-  ["zoom"],
-  3,
-  6,
-  4,
-  12,
-  10,
-  768,
-];
+export const heatRadius: ExpressionSpecification = ["interpolate", ["exponential", 2], ["zoom"], 3, 6, 4, 12, 10, 768];
 
 export const escapeHtml = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);

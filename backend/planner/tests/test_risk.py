@@ -18,11 +18,16 @@ L, M, H, S, N = Level.LOW, Level.MODERATE, Level.HIGH, Level.SEVERE, Level.NO_TR
 @pytest.mark.parametrize(
     "mph, expected",
     [
-        (0, L), (24.9, L),
-        (25, M), (34.9, M),
-        (35, H), (44.9, H),
-        (45, S), (54.9, S),
-        (55, N), (80, N),
+        (0, L),
+        (24.9, L),
+        (25, M),
+        (34.9, M),
+        (35, H),
+        (44.9, H),
+        (45, S),
+        (54.9, S),
+        (55, N),
+        (80, N),
     ],
 )
 def test_wind_bands(mph, expected):
@@ -32,11 +37,16 @@ def test_wind_bands(mph, expected):
 @pytest.mark.parametrize(
     "rate, expected",
     [
-        (0, L), (0.099, L),
-        (0.10, M), (0.249, M),
-        (0.25, H), (0.499, H),
-        (0.50, S), (1.00, S),  # "> 1.00" is No Travel, so exactly 1.00 is still Severe
-        (1.001, N), (3, N),
+        (0, L),
+        (0.099, L),
+        (0.10, M),
+        (0.249, M),
+        (0.25, H),
+        (0.499, H),
+        (0.50, S),
+        (1.00, S),  # "> 1.00" is No Travel, so exactly 1.00 is still Severe
+        (1.001, N),
+        (3, N),
     ],
 )
 def test_rain_bands(rate, expected):
@@ -46,10 +56,14 @@ def test_rain_bands(rate, expected):
 @pytest.mark.parametrize(
     "rate, expected",
     [
-        (0, L), (0.49, L),
-        (0.5, M), (0.99, M),
-        (1.0, H), (1.99, H),
-        (2.0, S), (3.0, S),  # "> 3.0" is No Travel
+        (0, L),
+        (0.49, L),
+        (0.5, M),
+        (0.99, M),
+        (1.0, H),
+        (1.99, H),
+        (2.0, S),
+        (3.0, S),  # "> 3.0" is No Travel
         (3.01, N),
     ],
 )

@@ -29,7 +29,11 @@ export function PlaceInput({ label, value, onChange, placeholder, error, icon }:
   const picked = typeof value !== "string";
   const q = useDebounced(picked ? "" : text.trim(), 250);
 
-  const { data: results = [], isFetching, isError } = useQuery({
+  const {
+    data: results = [],
+    isFetching,
+    isError,
+  } = useQuery({
     queryKey: ["geocode", q],
     queryFn: ({ signal }) => api.geocode(q, signal),
     enabled: q.length >= 2,

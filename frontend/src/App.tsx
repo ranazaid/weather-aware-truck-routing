@@ -26,8 +26,16 @@ function TripSummary({ plan, onEdit }: { plan: Plan; onEdit: () => void }) {
           {r.origin.label} <span className="text-ink-500">→</span> {r.destination.label}
         </p>
         <p className="num mt-0.5 text-xs text-ink-400">
-          {formatDateTime(r.departure)} · {formatLoad(r.load_lb)} · every {r.interval_mi} mi · HOS {r.hos ? "on" : "off"}
+          {formatDateTime(r.departure)} · {formatLoad(r.load_lb)} · every {r.interval_mi} mi · HOS{" "}
+          {r.hos ? "on" : "off"}
         </p>
+        {r.scenario && (
+          <p className="mt-1.5">
+            <span className="chip bg-risk-no_travel/15 text-risk-no_travel ring-1 ring-risk-no_travel/40 ring-inset">
+              What-if: {r.scenario.text}
+            </span>
+          </p>
+        )}
       </div>
       <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={onEdit}>
         <Pencil size={12} /> Edit
@@ -90,7 +98,8 @@ export default function App() {
     if (!plan) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.closest("input, textarea, select, [contenteditable=true], dialog[open]") || t.tagName === "BUTTON")) return;
+      if (t && (t.closest("input, textarea, select, [contenteditable=true], dialog[open]") || t.tagName === "BUTTON"))
+        return;
       if (e.code === "Space") {
         e.preventDefault();
         togglePlayback();
@@ -125,18 +134,20 @@ export default function App() {
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <aside className="scroll-thin order-2 w-full shrink-0 space-y-3 border-ink-800 p-3 lg:order-1 lg:w-[430px] lg:overflow-y-auto lg:border-r xl:w-[460px]">
-          {plan && !formOpen ? (
-            <TripSummary plan={plan} onEdit={() => setFormOpen(true)} />
-          ) : (
-            <div className="panel p-4">
-              <TripForm onSubmit={submit} loading={planMut.isPending} serverErrors={serverFields} />
-            </div>
-          )}
+          {plan && !formOpen && <TripSummary plan={plan} onEdit={() => setFormOpen(true)} />}
+          {/* Kept mounted while collapsed so "Edit" reopens the trip exactly as it was entered. */}
+          <div className="panel p-4" hidden={!!plan && !formOpen}>
+            <TripForm onSubmit={submit} loading={planMut.isPending} serverErrors={serverFields} />
+          </div>
 
           {error && (
             <ErrorBanner
               message={error instanceof Error ? error.message : "Planning failed."}
-              onRetry={lastRequest && !(error instanceof ApiError && error.status === 400) ? () => submit(lastRequest) : undefined}
+              onRetry={
+                lastRequest && !(error instanceof ApiError && error.status === 400)
+                  ? () => submit(lastRequest)
+                  : undefined
+              }
             />
           )}
 
@@ -173,31 +184,34 @@ export default function App() {
           )}
         </aside>
 
-        <main className="relative order-1 h-[58vh] min-h-[380px] flex-1 lg:order-2 lg:h-auto">
-          <RouteMap
-            plan={plan}
-            heatmap={heat.data ?? null}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            focus={focus}
-            onFocus={onFocus}
-            hour={playback.hour}
-            metric={metric}
-            showHeatmap={showHeatmap}
-            showCheckpoints={showCheckpoints}
-          />
-          <div className="pointer-events-none absolute top-3 left-3 z-10 hidden sm:block">
-            <div className="pointer-events-auto">
-              <MapLegend
-                metric={metric}
-                showHeatmap={showHeatmap && !!heat.data}
-                showCheckpoints={showCheckpoints}
-                onShowCheckpoints={setShowCheckpoints}
-              />
+        <main className="relative order-1 flex flex-1 flex-col lg:order-2">
+          <div className="relative h-[52vh] min-h-[340px] sm:h-[62vh] lg:h-auto lg:flex-1">
+            <RouteMap
+              plan={plan}
+              heatmap={heat.data ?? null}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              focus={focus}
+              onFocus={onFocus}
+              hour={playback.hour}
+              metric={metric}
+              showHeatmap={showHeatmap}
+              showCheckpoints={showCheckpoints}
+            />
+            <div className="pointer-events-none absolute top-3 left-3 z-10 hidden sm:block">
+              <div className="pointer-events-auto">
+                <MapLegend
+                  metric={metric}
+                  showHeatmap={showHeatmap && !!heat.data}
+                  showCheckpoints={showCheckpoints}
+                  onShowCheckpoints={setShowCheckpoints}
+                />
+              </div>
             </div>
+            {planMut.isPending && <PlanningOverlay />}
           </div>
           {plan && (
-            <div className="absolute inset-x-2 bottom-2 z-10 sm:inset-x-3 sm:bottom-3 lg:right-14">
+            <div className="z-10 p-2 sm:absolute sm:inset-x-3 sm:bottom-3 sm:p-0 lg:right-14">
               <ForecastSlider
                 hour={playback.hour}
                 maxHour={MAX_HOUR}
@@ -218,7 +232,6 @@ export default function App() {
               />
             </div>
           )}
-          {planMut.isPending && <PlanningOverlay />}
         </main>
       </div>
 

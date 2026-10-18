@@ -35,7 +35,10 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.gzip.GZipMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+# The API is stateless JSON with no cookie or session auth, so there is nothing for CSRF to protect.
+SILENCED_SYSTEM_CHECKS = ["security.W003"]
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -67,9 +70,10 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-# The built React app (frontend/dist) is copied here at deploy time and served by WhiteNoise.
-STATICFILES_DIRS = [p for p in [BASE_DIR / "frontend_dist"] if p.exists()]
+# The built React app (Vite writes it to backend/frontend_dist) is served from the site root by WhiteNoise;
+# Vite's content-hashed files under /assets/ are cached for a year.
 WHITENOISE_ROOT = BASE_DIR / "frontend_dist" if (BASE_DIR / "frontend_dist").exists() else None
+WHITENOISE_IMMUTABLE_FILE_TEST = r"^.+[.-][0-9a-zA-Z_-]{8,12}\.(js|css|woff2?|svg|png)$"
 
 CORS_ALLOWED_ORIGINS = [
     o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "http://localhost:5173").split(",") if o.strip()
@@ -107,3 +111,13 @@ LOGGING = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+if not DEBUG:
+    # Behind the host's TLS-terminating proxy.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = env_bool("DJANGO_SSL_REDIRECT", False)
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "0"))
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = True
+    SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
+    if SECRET_KEY.startswith("dev-only"):
+        raise RuntimeError("Set DJANGO_SECRET_KEY when DJANGO_DEBUG is false.")

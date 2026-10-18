@@ -37,7 +37,10 @@ export function ResultsSkeleton() {
 
 export function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex items-start gap-3 rounded-xl border border-risk-severe/40 bg-risk-severe/10 p-3 text-sm">
+    <div
+      role="alert"
+      className="flex items-start gap-3 rounded-xl border border-risk-severe/40 bg-risk-severe/10 p-3 text-sm"
+    >
       <AlertTriangle size={16} className="mt-0.5 shrink-0 text-risk-severe" />
       <p className="flex-1 text-ink-100">{message}</p>
       {onRetry && (
@@ -54,7 +57,10 @@ export function Warnings({ items }: { items: string[] }) {
   return (
     <ul className="space-y-1.5" aria-label="Warnings">
       {items.map((w) => (
-        <li key={w} className="flex items-start gap-2 rounded-lg border border-risk-high/30 bg-risk-high/10 px-3 py-2 text-xs text-ink-100">
+        <li
+          key={w}
+          className="flex items-start gap-2 rounded-lg border border-risk-high/30 bg-risk-high/10 px-3 py-2 text-xs text-ink-100"
+        >
           <AlertTriangle size={13} className="mt-0.5 shrink-0 text-risk-high" /> {w}
         </li>
       ))}

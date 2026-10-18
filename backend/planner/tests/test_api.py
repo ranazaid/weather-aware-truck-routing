@@ -133,3 +133,25 @@ def test_geocode_validation_and_coordinates(client):
 def test_spa_fallback(client):
     r = client.get("/some/client/route")
     assert r.status_code == 200 and b"<" in r.content
+
+
+@responses.activate
+def test_what_if_scenario_is_applied_and_labelled(client):
+    mock_providers(wind_for=lambda lon, lat, h: 20.0)  # Low on its own
+    real = client.post("/api/plan", body(load_lb=45_000), format="json").json()
+    assert real["request"]["scenario"] is None
+    assert all(r["summary"]["max_level"] == "low" for r in real["routes"])
+
+    p = client.post("/api/plan", body(load_lb=45_000, scenario={"wind_add_mph": 18}), format="json").json()
+    # 38 mph with > 40,000 lb → Severe through the load rule
+    assert all(r["summary"]["max_level"] == "severe" for r in p["routes"])
+    assert p["routes"][0]["checkpoints"][0]["weather"]["wind_mph"] == 38.0
+    assert p["request"]["scenario"]["text"] == "+18 mph wind"
+    assert p["warnings"][0].startswith("What-if scenario")
+    h = client.get(f"/api/plans/{p['plan_id']}/heatmap").json()
+    assert all(3 <= v < 4 for v in h["metrics"]["risk"][0])
+
+
+def test_scenario_bounds_are_validated(client):
+    r = client.post("/api/plan", body(scenario={"wind_add_mph": 99}), format="json")
+    assert r.status_code == 400 and "scenario" in r.json()["error"]["fields"]

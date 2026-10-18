@@ -121,10 +121,7 @@ def explain(summaries: list[RouteSummary]) -> dict:
                 f"{best.label} is listed first."
             )
         else:
-            text = (
-                f"Route {best.label} beats Route {other.label} on {d['criterion']}: "
-                f"{d['best']} vs {d['other']}."
-            )
+            text = f"Route {best.label} beats Route {other.label} on {d['criterion']}: {d['best']} vs {d['other']}."
         comparisons.append({"route_id": other.route_id, "label": other.label, "text": text, **(d or {})})
 
     headline_bits = []

@@ -31,7 +31,13 @@ function checkpoint(index: number, mile: number, level: LevelKey, wind = 10, rul
 
 function route(id: string, opts: Partial<PlannedRoute> & { levels: LevelKey[] }): PlannedRoute {
   const cps = opts.levels.map((lvl, i) =>
-    checkpoint(i, i * 25, lvl, lvl === "severe" ? 40 : lvl === "high" ? 38 : 10, lvl === "severe" ? "35–44 mph wind with load over 40,000 lb → Severe" : null),
+    checkpoint(
+      i,
+      i * 25,
+      lvl,
+      lvl === "severe" ? 40 : lvl === "high" ? 38 : 10,
+      lvl === "severe" ? "35–44 mph wind with load over 40,000 lb → Severe" : null,
+    ),
   );
   const miles = { low: 0, moderate: 0, high: 0, severe: 0, no_travel: 0 } as Record<LevelKey, number>;
   opts.levels.forEach((l) => (miles[l] += 25));
@@ -74,10 +80,15 @@ function route(id: string, opts: Partial<PlannedRoute> & { levels: LevelKey[] })
       duration_s: duration,
       miles_by_level: miles,
       unknown_mi: 0,
-      avg_risk: opts.levels.reduce((a, l) => a + ["low", "moderate", "high", "severe", "no_travel"].indexOf(l), 0) / opts.levels.length,
+      avg_risk:
+        opts.levels.reduce((a, l) => a + ["low", "moderate", "high", "severe", "no_travel"].indexOf(l), 0) /
+        opts.levels.length,
       max_level: opts.levels.reduce<LevelKey>(
         (m, l) =>
-          ["low", "moderate", "high", "severe", "no_travel"].indexOf(l) > ["low", "moderate", "high", "severe", "no_travel"].indexOf(m) ? l : m,
+          ["low", "moderate", "high", "severe", "no_travel"].indexOf(l) >
+          ["low", "moderate", "high", "severe", "no_travel"].indexOf(m)
+            ? l
+            : m,
         "low",
       ),
     },
@@ -125,6 +136,7 @@ export function makePlan(): Plan {
       interval_mi: 25,
       hos: true,
       truck_speed_cap_mph: 65,
+      scenario: null,
     },
     forecast_window: { start: new Date(DEP).toISOString(), end: new Date(DEP + 50 * 3600_000).toISOString() },
     routes: [A, B, C],
@@ -134,8 +146,18 @@ export function makePlan(): Plan {
       headline: "No Severe weather; 25.0 High-risk miles.",
       order: ["C", "B", "A"],
       comparisons: [
-        { route_id: "B", label: "B", text: "Route C beats Route B on High miles: 25.0 mi vs 50.0 mi.", criterion: "High miles" },
-        { route_id: "A", label: "A", text: "Route C beats Route A on Severe miles: 0.0 mi vs 25.0 mi.", criterion: "Severe miles" },
+        {
+          route_id: "B",
+          label: "B",
+          text: "Route C beats Route B on High miles: 25.0 mi vs 50.0 mi.",
+          criterion: "High miles",
+        },
+        {
+          route_id: "A",
+          label: "A",
+          text: "Route C beats Route A on Severe miles: 0.0 mi vs 25.0 mi.",
+          criterion: "Severe miles",
+        },
       ],
     },
     warnings: [],

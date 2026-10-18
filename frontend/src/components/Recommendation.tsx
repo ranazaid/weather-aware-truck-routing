@@ -7,7 +7,12 @@ type Row = { key: string; label: string; get: (r: PlannedRoute) => number; fmt: 
 
 /** The ranking rules in the order they are applied (mirrors backend `recommend.CRITERIA`). */
 export const CRITERIA: Row[] = [
-  { key: "No Travel miles", label: "No Travel mi", get: (r) => r.summary.miles_by_level.no_travel, fmt: (v) => v.toFixed(1) },
+  {
+    key: "No Travel miles",
+    label: "No Travel mi",
+    get: (r) => r.summary.miles_by_level.no_travel,
+    fmt: (v) => v.toFixed(1),
+  },
   { key: "Severe miles", label: "Severe mi", get: (r) => r.summary.miles_by_level.severe, fmt: (v) => v.toFixed(1) },
   { key: "High miles", label: "High mi", get: (r) => r.summary.miles_by_level.high, fmt: (v) => v.toFixed(1) },
   { key: "average risk", label: "Avg risk (0–4)", get: (r) => r.summary.avg_risk, fmt: (v) => v.toFixed(2) },
@@ -59,7 +64,7 @@ export function Recommendation({
           <caption className="sr-only">How the routes compare on each ranking rule, applied top to bottom</caption>
           <thead>
             <tr className="text-[11px] tracking-wider text-ink-400 uppercase">
-              <th scope="col" className="px-4 py-2 text-left font-semibold">
+              <th scope="col" className="px-3 py-2 text-left font-semibold whitespace-nowrap sm:px-4">
                 Rule, in order
               </th>
               {ordered.map((r) => (
@@ -90,7 +95,7 @@ export function Recommendation({
                   className={clsx("border-t border-ink-800", isDecisive && "bg-accent/[0.07]")}
                   aria-current={isDecisive ? "true" : undefined}
                 >
-                  <th scope="row" className="px-4 py-1.5 text-left font-normal text-ink-300">
+                  <th scope="row" className="px-3 py-1.5 text-left font-normal whitespace-nowrap text-ink-300 sm:px-4">
                     <span className="num mr-2 text-[10px] text-ink-500">{i + 1}</span>
                     {c.label}
                     {isDecisive && (
@@ -105,7 +110,10 @@ export function Recommendation({
                     return (
                       <td
                         key={r.id}
-                        className={clsx("num px-3 py-1.5 text-right whitespace-nowrap", isBest ? "text-white" : "text-ink-400")}
+                        className={clsx(
+                          "num px-2 py-1.5 text-right whitespace-nowrap sm:px-3",
+                          isBest ? "text-white" : "text-ink-400",
+                        )}
                       >
                         {c.fmt(v)}
                       </td>

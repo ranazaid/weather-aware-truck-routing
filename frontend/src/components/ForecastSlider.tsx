@@ -29,9 +29,7 @@ interface Props {
 
 /** Worst value of the metric along the whole corridor, per hour. */
 export function peaksByHour(heatmap: Heatmap, metric: HeatMetric): number[] {
-  return heatmap.metrics[metric].map((frame) =>
-    frame.reduce<number>((m, v) => (v != null && v > m ? v : m), 0),
-  );
+  return heatmap.metrics[metric].map((frame) => frame.reduce<number>((m, v) => (v != null && v > m ? v : m), 0));
 }
 
 function ForecastSliderImpl(p: Props) {
@@ -51,7 +49,12 @@ function ForecastSliderImpl(p: Props) {
     <section aria-label="Forecast time" className="panel p-3 sm:p-4">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1">
-          <button type="button" className="btn-ghost p-1.5" onClick={() => p.onHour(Math.floor(p.hour) - 1)} aria-label="Back one hour">
+          <button
+            type="button"
+            className="btn-ghost p-1.5"
+            onClick={() => p.onHour(Math.floor(p.hour) - 1)}
+            aria-label="Back one hour"
+          >
             <SkipBack size={15} />
           </button>
           <button
@@ -61,9 +64,18 @@ function ForecastSliderImpl(p: Props) {
             aria-label={p.playing ? "Pause forecast playback" : "Play forecast"}
             title="Play / pause (Space)"
           >
-            {p.playing ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+            {p.playing ? (
+              <Pause size={16} fill="currentColor" />
+            ) : (
+              <Play size={16} fill="currentColor" className="ml-0.5" />
+            )}
           </button>
-          <button type="button" className="btn-ghost p-1.5" onClick={() => p.onHour(Math.floor(p.hour) + 1)} aria-label="Forward one hour">
+          <button
+            type="button"
+            className="btn-ghost p-1.5"
+            onClick={() => p.onHour(Math.floor(p.hour) + 1)}
+            aria-label="Forward one hour"
+          >
             <SkipForward size={15} />
           </button>
           <button type="button" className="btn-ghost p-1.5" onClick={p.onReset} aria-label="Back to departure">
@@ -75,13 +87,17 @@ function ForecastSliderImpl(p: Props) {
           <p className="num text-sm font-semibold text-white" aria-live="polite">
             T+{whole} h <span className="font-normal text-ink-300">· {formatDateTime(at)}</span>
           </p>
-          <p className="text-[11px] text-ink-400">
+          <p className="hidden text-[11px] text-ink-400 sm:block">
             Hours after departure · trucks show where each route is at this time
           </p>
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="flex rounded-lg border border-ink-700 bg-ink-850 p-0.5" role="radiogroup" aria-label="Heatmap layer">
+          <div
+            className="flex rounded-lg border border-ink-700 bg-ink-850 p-0.5"
+            role="radiogroup"
+            aria-label="Heatmap layer"
+          >
             {METRICS.map((m) => (
               <button
                 key={m}
@@ -144,7 +160,10 @@ function ForecastSliderImpl(p: Props) {
             return (
               <div
                 key={i}
-                className={clsx("flex-1 rounded-t-[2px] transition-opacity", Math.floor(p.hour) === i ? "opacity-100" : "opacity-55")}
+                className={clsx(
+                  "flex-1 rounded-t-[2px] transition-opacity",
+                  Math.floor(p.hour) === i ? "opacity-100" : "opacity-55",
+                )}
                 style={{ height: `${h}%`, backgroundColor: LEVEL_COLOR[lvl] }}
               />
             );
@@ -173,7 +192,9 @@ function ForecastSliderImpl(p: Props) {
           <p className="mt-1.5 text-[11px] text-ink-400">
             Worst {meta.label.toLowerCase()} in the corridor at this hour:{" "}
             <span className="num" style={{ color: LEVEL_COLOR[metricLevel(p.metric, worstNow)] }}>
-              {p.metric === "risk" ? LEVEL_LABEL[metricLevel("risk", worstNow)] : `${worstNow.toFixed(meta.digits)} ${meta.unit}`}
+              {p.metric === "risk"
+                ? LEVEL_LABEL[metricLevel("risk", worstNow)]
+                : `${worstNow.toFixed(meta.digits)} ${meta.unit}`}
             </span>
           </p>
         )}

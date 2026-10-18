@@ -45,7 +45,10 @@ export function RulesDialog({ open, onClose, rules }: Props) {
                     <th className="py-1.5 pr-3 text-left font-semibold">Condition</th>
                     {rules.levels.map((l) => (
                       <th key={l.key} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">
-                        <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: LEVEL_COLOR[l.key] }} />
+                        <span
+                          className="mr-1.5 inline-block h-2 w-2 rounded-full"
+                          style={{ background: LEVEL_COLOR[l.key] }}
+                        />
                         {l.label}
                       </th>
                     ))}
@@ -84,14 +87,24 @@ export function RulesDialog({ open, onClose, rules }: Props) {
           <h3 className="mb-1.5 text-xs font-semibold tracking-wider text-ink-400 uppercase">Interpretation</h3>
           <ul className="list-disc space-y-1 pl-5 text-ink-300">
             <li>Each checkpoint takes the worst of its wind, rain and snow levels, after the load rules.</li>
-            <li>Band edges belong to the higher band (25 mph is Moderate); rain above 1.00 and snow above 3.0 in/hr is No Travel.</li>
+            <li>
+              Band edges belong to the higher band (25 mph is Moderate); rain above 1.00 and snow above 3.0 in/hr is No
+              Travel.
+            </li>
             <li>Wind is the sustained 10 m wind; gusts are shown for context.</li>
-            <li>A checkpoint's weather applies to the road halfway to its neighbours, so miles add up to the route length.</li>
-            <li>Weather is read at the truck's ETA: OSRM road timing, capped at the truck speed limit, plus FMCSA breaks and resets when enabled.</li>
+            <li>
+              A checkpoint's weather applies to the road halfway to its neighbours, so miles add up to the route length.
+            </li>
+            <li>
+              Weather is read at the truck's ETA: OSRM road timing, capped at the truck speed limit, plus FMCSA breaks
+              and resets when enabled.
+            </li>
           </ul>
         </div>
         <div>
-          <h3 className="mb-1.5 text-xs font-semibold tracking-wider text-ink-400 uppercase">Recommendation, rule by rule</h3>
+          <h3 className="mb-1.5 text-xs font-semibold tracking-wider text-ink-400 uppercase">
+            Recommendation, rule by rule
+          </h3>
           <ol className="list-decimal space-y-1 pl-5 text-ink-300">
             <li>Fewest No Travel miles (a route that must not be driven is never the safest)</li>
             <li>Fewest Severe miles</li>

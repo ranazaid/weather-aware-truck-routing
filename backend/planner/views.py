@@ -15,6 +15,7 @@ from .domain.sampling import ALLOWED_INTERVALS_MI
 from .serializers import MAX_DAYS_AHEAD, MAX_LOAD_LB, PlanRequestSerializer
 from .services import geocoding, planner
 from .services.http import ProviderError
+from .services.weather import Scenario
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +85,8 @@ def plan(request):
     destination = geocoding.resolve(v["destination"])
     if geo.haversine_mi((origin["lon"], origin["lat"]), (destination["lon"], destination["lat"])) < 1:
         raise ValidationError({"destination": ["Destination must be at least a mile from the origin."]})
-    result = planner.build_plan(origin, destination, v["departure"], v["load_lb"], v["interval_mi"], v["hos"])
+    scenario = Scenario(**v["scenario"]) if v.get("scenario") else Scenario()
+    result = planner.build_plan(origin, destination, v["departure"], v["load_lb"], v["interval_mi"], v["hos"], scenario)
     return Response(result)
 
 
@@ -100,7 +102,9 @@ def spa_index(request):
     """Serve the built React app; in development the Vite dev server serves it instead."""
     index = settings.BASE_DIR / "frontend_dist" / "index.html"
     if index.exists():
-        return HttpResponse(index.read_text(encoding="utf-8"), content_type="text/html; charset=utf-8")
+        response = HttpResponse(index.read_text(encoding="utf-8"), content_type="text/html; charset=utf-8")
+        response["Cache-Control"] = "no-cache"  # always pick up a new deploy; hashed assets stay cached
+        return response
     return HttpResponse(
         "<h1>Weather-Aware Truck Routing API</h1><p>Frontend not built. Run <code>npm run dev</code> in "
         "<code>frontend/</code> or build it into <code>backend/frontend_dist</code>.</p>",

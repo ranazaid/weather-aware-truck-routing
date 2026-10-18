@@ -155,6 +155,7 @@ def assess(wind_mph: float, rain_in_hr: float, snow_in_hr: float, load_lb: float
 # checkpoint chips agree; the fraction only makes the heatmap blend smoothly.
 # ---------------------------------------------------------------------------
 
+
 def _continuous(value: float, bands: tuple[float, float, float, float]) -> float:
     edges = (0.0, *bands)
     for i in range(4):

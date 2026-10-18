@@ -1,4 +1,5 @@
 from django.urls import include, path, re_path
+
 from planner.views import spa_index
 
 urlpatterns = [

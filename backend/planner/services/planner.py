@@ -60,8 +60,15 @@ def _track(route: routing.Route, cum_drive: list[float], stops: list[hos.Stop], 
 
 
 def build_plan(
-    origin: dict, destination: dict, departure: datetime, load_lb: float, interval_mi: int, hos_enabled: bool
+    origin: dict,
+    destination: dict,
+    departure: datetime,
+    load_lb: float,
+    interval_mi: int,
+    hos_enabled: bool,
+    scenario: weather.Scenario | None = None,
 ) -> dict:
+    scenario = scenario or weather.Scenario()
     t_start = time.perf_counter()
     o, d = (origin["lon"], origin["lat"]), (destination["lon"], destination["lat"])
     routes, provider_warnings = routing.get_routes(o, d)
@@ -93,7 +100,7 @@ def build_plan(
             elapsed = hos.elapsed_for(cp.drive_s, stops)
             eta = dep_ts + elapsed
             s = series.get(weather.cell_of(cp.coord))
-            wx = weather.sample(s, eta) if s else None
+            wx = scenario.apply(weather.sample(s, eta)) if s else None
             a = assess(wx["wind_mph"], wx["rain_in_hr"], wx["snow_in_hr"], load_lb) if wx else None
             owned.append((cp.owned_mi, a.level if a else None))
             checkpoints.append(
@@ -118,8 +125,14 @@ def build_plan(
             mile = geo.value_at(cum_drive, r.cum_mi, st.at_drive_s)
             lon, lat = geo.point_at(r.coords, r.cum_mi, mile)
             stop_dicts.append(
-                {**st.as_dict(), "mile": round(mile, 1), "lon": round(lon, 5), "lat": round(lat, 5),
-                 "starts": iso(dep_ts + st.start_elapsed_s), "ends": iso(dep_ts + st.start_elapsed_s + st.duration_s)}
+                {
+                    **st.as_dict(),
+                    "mile": round(mile, 1),
+                    "lon": round(lon, 5),
+                    "lat": round(lat, 5),
+                    "starts": iso(dep_ts + st.start_elapsed_s),
+                    "ends": iso(dep_ts + st.start_elapsed_s + st.duration_s),
+                }
             )
         out_routes.append(
             {
@@ -146,6 +159,8 @@ def build_plan(
         )
         out_routes[-1]["segments"] = _risk_segments(r, checkpoints)
 
+    if scenario.active:
+        warnings.insert(0, f"What-if scenario: forecasts adjusted by {scenario.describe()}. Not real conditions.")
     if any(s.unknown_mi > 0 for s in summaries) and not any("forecast" in w for w in warnings):
         warnings.append("Some checkpoints had no forecast data; those miles are shown as Unknown.")
     if any(s.miles_by_level.get(Level.NO_TRAVEL, 0) > 0 for s in summaries):
@@ -159,6 +174,7 @@ def build_plan(
             "departure_ts": dep_ts,
             "load_lb": load_lb,
             "window": (start, end),
+            "scenario": scenario,
         },
         PLAN_TTL_S,
     )
@@ -174,6 +190,7 @@ def build_plan(
             "interval_mi": interval_mi,
             "hos": hos_enabled,
             "truck_speed_cap_mph": cap,
+            "scenario": scenario.as_dict(),
         },
         "forecast_window": {"start": iso(start), "end": iso(end)},
         "routes": out_routes,
@@ -191,6 +208,6 @@ def build_heatmap(plan_id: str) -> dict | None:
     ctx = cache.get(f"plan:{plan_id}")
     if ctx is None:
         return None
-    data = corridor.build(ctx["lines"], ctx["departure_ts"], ctx["load_lb"], ctx["window"])
+    data = corridor.build(ctx["lines"], ctx["departure_ts"], ctx["load_lb"], ctx["window"], ctx.get("scenario"))
     cache.set(key, data, PLAN_TTL_S)
     return data

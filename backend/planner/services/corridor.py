@@ -45,7 +45,10 @@ def _r(v, nd):
     return None if v is None else round(v, nd)
 
 
-def build(lines, departure_ts: float, load_lb: float, win: tuple[int, int]) -> dict:
+def build(
+    lines, departure_ts: float, load_lb: float, win: tuple[int, int], scenario: weather.Scenario | None = None
+) -> dict:
+    scenario = scenario or weather.Scenario()
     cells = corridor_cells(lines)
     series = weather.fetch(cells, *win)
     metrics: dict[str, list[list[float | None]]] = {"risk": [], "wind": [], "rain": [], "snow": []}
@@ -53,7 +56,7 @@ def build(lines, departure_ts: float, load_lb: float, win: tuple[int, int]) -> d
         ts = departure_ts + h * 3600
         row = {k: [] for k in metrics}
         for c in cells:
-            s = weather.sample(series[c], ts) if c in series else None
+            s = scenario.apply(weather.sample(series[c], ts)) if c in series else None
             if s is None:
                 for k in row:
                     row[k].append(None)

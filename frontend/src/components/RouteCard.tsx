@@ -92,8 +92,12 @@ export function RouteCard({ route, recommended, selected, onSelect }: Props) {
           </span>
         )}
         <span className="num ml-auto">
-          {s.miles_by_level.severe > 0 && <span className="text-risk-severe">{s.miles_by_level.severe.toFixed(0)} Severe · </span>}
-          {s.miles_by_level.high > 0 && <span className="text-risk-high">{s.miles_by_level.high.toFixed(0)} High · </span>}
+          {s.miles_by_level.severe > 0 && (
+            <span className="text-risk-severe">{s.miles_by_level.severe.toFixed(0)} Severe · </span>
+          )}
+          {s.miles_by_level.high > 0 && (
+            <span className="text-risk-high">{s.miles_by_level.high.toFixed(0)} High · </span>
+          )}
           avg {s.avg_risk.toFixed(2)}
         </span>
       </div>

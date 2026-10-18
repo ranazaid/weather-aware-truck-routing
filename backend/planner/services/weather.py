@@ -159,6 +159,46 @@ def sample(series: Series, ts: float) -> dict | None:
     }
 
 
+@dataclass(frozen=True)
+class Scenario:
+    """A clearly labelled what-if: adds wind and scales precipitation on top of the real forecast.
+
+    Lets a dispatcher (or a reviewer) see how the load rules and ranking react to worse weather when
+    the real forecast happens to be calm. Every response that uses it says so.
+    """
+
+    wind_add_mph: float = 0.0
+    precip_factor: float = 1.0
+
+    @property
+    def active(self) -> bool:
+        return self.wind_add_mph != 0 or self.precip_factor != 1
+
+    def apply(self, wx: dict | None) -> dict | None:
+        if wx is None or not self.active:
+            return wx
+        out = dict(wx)
+        out["wind_mph"] = round(wx["wind_mph"] + self.wind_add_mph, 1)
+        if wx.get("gust_mph") is not None:
+            out["gust_mph"] = round(wx["gust_mph"] + self.wind_add_mph, 1)
+        out["rain_in_hr"] = round(wx["rain_in_hr"] * self.precip_factor, 3)
+        out["snow_in_hr"] = round(wx["snow_in_hr"] * self.precip_factor, 3)
+        return out
+
+    def describe(self) -> str:
+        bits = []
+        if self.wind_add_mph:
+            bits.append(f"+{self.wind_add_mph:g} mph wind")
+        if self.precip_factor != 1:
+            bits.append(f"×{self.precip_factor:g} rain and snow")
+        return " and ".join(bits)
+
+    def as_dict(self) -> dict | None:
+        if not self.active:
+            return None
+        return {"wind_add_mph": self.wind_add_mph, "precip_factor": self.precip_factor, "text": self.describe()}
+
+
 def window(departure_ts: float, last_eta_ts: float, heatmap_hours: int = 48) -> tuple[int, int]:
     """A forecast window covering the trip and the heatmap slider, padded so interpolation never runs out."""
     start = hour_floor(departure_ts)

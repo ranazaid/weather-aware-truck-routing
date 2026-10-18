@@ -59,7 +59,9 @@ export function CheckpointTimeline({ route, focused, onFocus }: Props) {
 
       <ol ref={listRef} className="scroll-thin max-h-[420px] overflow-y-auto py-1" aria-label="Checkpoints in order">
         {items.length === 0 && (
-          <li className="px-4 py-6 text-center text-sm text-ink-400">No High, Severe or No Travel checkpoints on this route.</li>
+          <li className="px-4 py-6 text-center text-sm text-ink-400">
+            No High, Severe or No Travel checkpoints on this route.
+          </li>
         )}
         {items.map((item) =>
           item.kind === "stop" ? (
@@ -139,9 +141,7 @@ function CheckpointRow({
               <Metric icon={<Snowflake size={11} />} hot={drivers.includes("snow")}>
                 {w.snow_in_hr.toFixed(2)} in/hr
               </Metric>
-              {w.temp_f != null && (
-                <Metric icon={<Thermometer size={11} />}>{w.temp_f.toFixed(0)}°F</Metric>
-              )}
+              {w.temp_f != null && <Metric icon={<Thermometer size={11} />}>{w.temp_f.toFixed(0)}°F</Metric>}
               <span className="text-ink-500">{weatherText(w.weather_code)}</span>
             </span>
           ) : (

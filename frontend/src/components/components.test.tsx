@@ -66,6 +66,18 @@ describe("TripForm", () => {
     expect(new Date(req.departure).toString()).not.toBe("Invalid Date");
   });
 
+  it("sends a labelled what-if scenario only when one is set", async () => {
+    const onSubmit = vi.fn();
+    render(withQuery(<TripForm onSubmit={onSubmit} loading={false} />));
+    await userEvent.click(screen.getByRole("button", { name: /plan routes/i }));
+    expect(onSubmit.mock.calls[0]![0].scenario).toBeNull();
+    await userEvent.click(screen.getByText("What-if weather"));
+    fireEvent.change(screen.getByLabelText(/extra wind/i), { target: { value: "15" } });
+    expect(screen.getByText("simulated")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /plan routes/i }));
+    expect(onSubmit.mock.calls[1]![0].scenario).toEqual({ wind_add_mph: 15, precip_factor: 1 });
+  });
+
   it("shows validation errors and does not submit", async () => {
     const onSubmit = vi.fn();
     render(withQuery(<TripForm onSubmit={onSubmit} loading={false} />));
@@ -84,7 +96,15 @@ describe("TripForm", () => {
   });
 
   it("shows server field errors", () => {
-    render(withQuery(<TripForm onSubmit={vi.fn()} loading={false} serverErrors={{ departure: ["Departure cannot be in the past."] }} />));
+    render(
+      withQuery(
+        <TripForm
+          onSubmit={vi.fn()}
+          loading={false}
+          serverErrors={{ departure: ["Departure cannot be in the past."] }}
+        />,
+      ),
+    );
     expect(screen.getByText("Departure cannot be in the past.")).toBeInTheDocument();
   });
 });
@@ -167,9 +187,21 @@ describe("ForecastSlider", () => {
         [2.4, null],
         [0.1, 0.2],
       ],
-      wind: [[1, 2], [3, 4], [5, 6]],
-      rain: [[0, 0], [0, 0], [0, 0]],
-      snow: [[0, 0], [0, 0], [0, 0]],
+      wind: [
+        [1, 2],
+        [3, 4],
+        [5, 6],
+      ],
+      rain: [
+        [0, 0],
+        [0, 0],
+        [0, 0],
+      ],
+      snow: [
+        [0, 0],
+        [0, 0],
+        [0, 0],
+      ],
     },
     peak: { risk: 2.4, wind: 6, rain: 0, snow: 0 },
   };

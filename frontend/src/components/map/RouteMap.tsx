@@ -92,6 +92,23 @@ function checkpointHtml(route: PlannedRoute, cp: Checkpoint): string {
     </div>`;
 }
 
+/** Push one (interpolated) forecast hour into the heat layer's feature state: no data upload, no re-tiling. */
+function paintFrame(map: MLMap, heatmap: Heatmap, metric: HeatMetric, hour: number) {
+  const frames = heatmap.metrics[metric];
+  const h = Math.max(0, Math.min(heatmap.hours, hour));
+  const h0 = Math.floor(h);
+  const h1 = Math.min(heatmap.hours, h0 + 1);
+  const t = h - h0;
+  const a = frames[h0] ?? [];
+  const b = frames[h1] ?? a;
+  for (let i = 0; i < heatmap.points.length; i++) {
+    const va = a[i];
+    const vb = b[i];
+    const v = va == null ? vb : vb == null ? va : va + (vb - va) * t;
+    map.setFeatureState({ source: "heat", id: i }, { v: v ?? 0, has: v != null });
+  }
+}
+
 function el(className: string, html: string, title?: string): HTMLDivElement {
   const d = document.createElement("div");
   d.className = className;
@@ -113,6 +130,7 @@ function RouteMapImpl(props: MapProps) {
   const hover = useRef<{ popup: maplibregl.Popup | null; id: number | null }>({ popup: null, id: null });
   const focusedId = useRef<number | null>(null);
   const lastMetric = useRef<HeatMetric | null>(null);
+  const applyFrame = useRef<(() => void) | null>(null);
 
   useLayoutEffect(() => {
     latest.current = props;
@@ -234,6 +252,10 @@ function RouteMapImpl(props: MapProps) {
   }
 
   function wireEvents(map: MLMap) {
+    // Feature state set while the worker is still parsing new heat data can be dropped: repaint once loaded.
+    map.on("sourcedata", (e) => {
+      if (e.sourceId === "heat" && e.isSourceLoaded) applyFrame.current?.();
+    });
     map.on("mouseenter", "route-hit", () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", "route-hit", () => (map.getCanvas().style.cursor = ""));
     map.on("click", "route-hit", (e: MapLayerMouseEvent) => {
@@ -251,7 +273,8 @@ function RouteMapImpl(props: MapProps) {
       if (!f) return;
       const id = Number(f.id);
       if (hover.current.id !== id) {
-        if (hover.current.id != null) map.setFeatureState({ source: "checkpoints", id: hover.current.id }, { hover: false });
+        if (hover.current.id != null)
+          map.setFeatureState({ source: "checkpoints", id: hover.current.id }, { hover: false });
         map.setFeatureState({ source: "checkpoints", id }, { hover: true });
         hover.current.id = id;
       }
@@ -259,12 +282,18 @@ function RouteMapImpl(props: MapProps) {
       const route = plan?.routes.find((r) => r.id === f.properties?.routeId);
       const cp = route?.checkpoints[Number(f.properties?.index)];
       if (!route || !cp || focusedId.current === id) return;
-      hover.current.popup ??= new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 12, maxWidth: "280px" });
+      hover.current.popup ??= new maplibregl.Popup({
+        closeButton: false,
+        closeOnClick: false,
+        offset: 12,
+        maxWidth: "280px",
+      });
       hover.current.popup.setLngLat([cp.lon, cp.lat]).setHTML(checkpointHtml(route, cp)).addTo(map);
     });
     map.on("mouseleave", "cp", () => {
       map.getCanvas().style.cursor = "";
-      if (hover.current.id != null) map.setFeatureState({ source: "checkpoints", id: hover.current.id }, { hover: false });
+      if (hover.current.id != null)
+        map.setFeatureState({ source: "checkpoints", id: hover.current.id }, { hover: false });
       hover.current.id = null;
       hover.current.popup?.remove();
     });
@@ -281,7 +310,11 @@ function RouteMapImpl(props: MapProps) {
       type: "FeatureCollection",
       features: [...routes]
         .sort((a, b) => Number(a.id === selectedId) - Number(b.id === selectedId))
-        .map((r) => ({ type: "Feature", properties: { id: r.id, selected: r.id === selectedId }, geometry: r.geometry })),
+        .map((r) => ({
+          type: "Feature",
+          properties: { id: r.id, selected: r.id === selectedId },
+          geometry: r.geometry,
+        })),
     });
     (map.getSource("segments") as GeoJSONSource).setData({
       type: "FeatureCollection",
@@ -314,15 +347,25 @@ function RouteMapImpl(props: MapProps) {
       const o = plan.request.origin;
       const d = plan.request.destination;
       add(
-        new maplibregl.Marker({ element: el("map-pin map-pin-origin", "", o.label), anchor: "center" }).setLngLat([o.lon, o.lat]),
+        new maplibregl.Marker({ element: el("map-pin map-pin-origin", "", o.label), anchor: "center" }).setLngLat([
+          o.lon,
+          o.lat,
+        ]),
       );
       add(
-        new maplibregl.Marker({ element: el("map-pin map-pin-dest", "", d.label), anchor: "center" }).setLngLat([d.lon, d.lat]),
+        new maplibregl.Marker({ element: el("map-pin map-pin-dest", "", d.label), anchor: "center" }).setLngLat([
+          d.lon,
+          d.lat,
+        ]),
       );
       for (const r of routes) {
         const coords = r.geometry.coordinates;
         const at = coords[Math.floor(coords.length * (0.38 + 0.12 * "ABC".indexOf(r.id)))] ?? coords[0]!;
-        const badge = el(`route-badge${r.id === selectedId ? " route-badge-selected" : ""}`, escapeHtml(r.label), `Route ${r.label}`);
+        const badge = el(
+          `route-badge${r.id === selectedId ? " route-badge-selected" : ""}`,
+          escapeHtml(r.label),
+          `Route ${r.label}`,
+        );
         badge.addEventListener("click", (ev) => {
           ev.stopPropagation();
           latest.current.onSelect(r.id);
@@ -333,7 +376,11 @@ function RouteMapImpl(props: MapProps) {
         const icon = s.kind === "rest" ? MOON_SVG : COFFEE_SVG;
         add(
           new maplibregl.Marker({
-            element: el(`stop-pin stop-pin-${s.kind}`, icon, `${s.label} · mile ${s.mile.toFixed(0)} · ${formatDateTime(s.starts)}`),
+            element: el(
+              `stop-pin stop-pin-${s.kind}`,
+              icon,
+              `${s.label} · mile ${s.mile.toFixed(0)} · ${formatDateTime(s.starts)}`,
+            ),
             anchor: "center",
           }).setLngLat([s.lon, s.lat]),
         );
@@ -350,7 +397,7 @@ function RouteMapImpl(props: MapProps) {
     const wide = map.getContainer().clientWidth >= 640;
     map.fitBounds(b as LngLatBoundsLike, {
       // keep routes clear of the legend (top-left) and the forecast panel (bottom)
-      padding: padding ?? { top: 40, bottom: wide ? 215 : 230, left: wide ? 250 : 30, right: wide ? 70 : 30 },
+      padding: padding ?? { top: 40, bottom: wide ? 215 : 40, left: wide ? 250 : 30, right: wide ? 70 : 40 },
       duration: 900,
       maxZoom: 9,
     });
@@ -383,19 +430,10 @@ function RouteMapImpl(props: MapProps) {
         map.setPaintProperty("heat", "circle-opacity", heatOpacity(metric));
         lastMetric.current = metric;
       }
-      const frames = heatmap.metrics[metric];
-      const h = Math.max(0, Math.min(heatmap.hours, hour));
-      const h0 = Math.floor(h);
-      const h1 = Math.min(heatmap.hours, h0 + 1);
-      const t = h - h0;
-      const a = frames[h0] ?? [];
-      const b = frames[h1] ?? a;
-      for (let i = 0; i < heatmap.points.length; i++) {
-        const va = a[i];
-        const vb = b[i];
-        const v = va == null ? vb : vb == null ? va : va + (vb - va) * t;
-        map.setFeatureState({ source: "heat", id: i }, { v: v ?? 0, has: v != null });
-      }
+      applyFrame.current = () => paintFrame(map, heatmap, metric, hour);
+      applyFrame.current();
+    } else {
+      applyFrame.current = null;
     }
 
     const routes = plan?.routes ?? [];
@@ -416,7 +454,8 @@ function RouteMapImpl(props: MapProps) {
       }
       const node = m.getElement();
       // toggle our classes only: MapLibre keeps its own positioning classes on the same element
-      for (const s of ["driving", "parked", "arrived", "not_departed"]) node.classList.toggle(`truck-${s}`, st.status === s);
+      for (const s of ["driving", "parked", "arrived", "not_departed"])
+        node.classList.toggle(`truck-${s}`, st.status === s);
       node.classList.toggle("truck-selected", r.id === selectedId);
       const html = `${TRUCK_SVG}<span>${escapeHtml(r.label)}</span>`;
       if (node.dataset.label !== r.label) {
@@ -458,7 +497,10 @@ function RouteMapImpl(props: MapProps) {
       <div ref={container} className="h-full w-full" aria-label="Route map" role="region" />
       {!ready && (
         <div className="absolute inset-0 grid place-items-center bg-ink-950">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-ink-600 border-t-accent" aria-label="Loading map" />
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-2 border-ink-600 border-t-accent"
+            aria-label="Loading map"
+          />
         </div>
       )}
     </div>

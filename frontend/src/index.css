@@ -81,7 +81,6 @@
   scrollbar-color: var(--color-ink-600) transparent;
 }
 
-
 /* MapLibre popups in the app's dark style */
 .maplibregl-popup-content {
   @apply rounded-xl! border border-ink-600 bg-ink-900! p-0! text-ink-100 shadow-2xl shadow-black/60;
@@ -167,4 +166,8 @@ input[type="range"].slider::-moz-range-thumb {
 }
 .truck-arrived span::after {
   content: " ✓";
+}
+
+.maplibregl-popup {
+  z-index: 5; /* above truck and stop markers */
 }

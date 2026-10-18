@@ -55,8 +55,9 @@ export function MapLegend({ metric, showHeatmap, showCheckpoints, onShowCheckpoi
           </ul>
           {showHeatmap && (
             <p className="text-[10px] leading-snug text-ink-400">
-              Heatmap: {METRIC_META[metric].label.toLowerCase()} {metric === "risk" ? "level (wind, rain, snow + load rules)" : `(${METRIC_META[metric].unit})`}{" "}
-              across a ±40 mi corridor.
+              Heatmap: {METRIC_META[metric].label.toLowerCase()}{" "}
+              {metric === "risk" ? "level (wind, rain, snow + load rules)" : `(${METRIC_META[metric].unit})`} across a
+              ±40 mi corridor.
             </p>
           )}
           <label className="flex cursor-pointer items-center gap-2 text-ink-300">

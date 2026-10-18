@@ -4,7 +4,7 @@ Weather-aware truck routing, built for the Spotter AI full-stack assessment.
 
 You enter a trip (origin, destination, departure time and load weight). The app finds three road routes, works out when the truck reaches each checkpoint, looks up the forecast for that hour, and scores the risk using the assessment's thresholds and load rules. It then recommends one route and shows which rule made the difference. A 48-hour corridor heatmap with a time slider shows how the weather moves along the routes, and where each truck is at that hour.
 
-- Live app: _add the hosted URL_
+- Live app: https://routecast-zaid.onrender.com (free plan: the first request after a quiet spell can take up to a minute)
 - Walkthrough video: _add the Loom URL_
 
 ![Plan with a what-if wind scenario: risk-coloured routes, the corridor heatmap and the decision table](docs/screenshots/plan-what-if.png)
@@ -103,6 +103,7 @@ cd frontend && npm ci && npm run dev
 cd backend && pytest                    # 163 tests
 cd frontend && npm test                 # 53 unit and component tests
 cd frontend && npm run build && npm run e2e   # 45 end-to-end tests in Chromium
+cd frontend && npm run e2e:live               # smoke tests against the hosted app
 ```
 
 - **Backend:** every threshold edge and load rule, the heatmap score against the levels, geometry, checkpoint spacing, the HOS schedule and its inverse, ranking and tie-breaks, the three-route guarantee, forecast interpolation and batching, and the API end to end against fake OSRM and Open-Meteo responses.

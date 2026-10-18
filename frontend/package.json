@@ -14,9 +14,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "e2e": "playwright test",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "e2e:live": "playwright test -c playwright.live.config.ts"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@tanstack/react-query": "5.80.12",
     "clsx": "2.1.1",
     "lucide-react": "0.515.0",

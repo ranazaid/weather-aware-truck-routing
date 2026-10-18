@@ -11,8 +11,21 @@ export const LEVEL_LABEL: Record<SegmentLevel, string> = {
   unknown: "Unknown",
 };
 
-/** One palette everywhere: route segments, chips, bars, heatmap and legend. */
+/**
+ * Fill colours for graphics: route segments, heatmap, bars, dots and swatches. Each has at least
+ * 3:1 contrast against the dark UI (WCAG non-text contrast) and keeps its familiar hue.
+ */
 export const LEVEL_COLOR: Record<SegmentLevel, string> = {
+  low: "#22c55e",
+  moderate: "#eab308",
+  high: "#f97316",
+  severe: "#ef4444",
+  no_travel: "#c026d3",
+  unknown: "#64748b",
+};
+
+/** The same hues lightened for coloured text (chips, labels): at least 4.5:1 on the panels. */
+export const LEVEL_TEXT: Record<SegmentLevel, string> = {
   low: "#22c55e",
   moderate: "#eab308",
   high: "#f97316",

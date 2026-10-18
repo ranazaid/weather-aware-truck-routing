@@ -1,17 +1,20 @@
 import { AlertTriangle, CloudSun, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 
+// Paced to real timings on a small server (a cold plan takes 5-15 s).
 const STEPS = [
   "Finding three distinct road routes…",
   "Timing the truck, including driver breaks…",
   "Fetching forecasts at every checkpoint ETA…",
   "Scoring risk and ranking routes…",
+  "Checking later departure times…",
+  "Almost there…",
 ];
 
 export function PlanningOverlay() {
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setStep((s) => Math.min(STEPS.length - 1, s + 1)), 1400);
+    const id = setInterval(() => setStep((s) => Math.min(STEPS.length - 1, s + 1)), 2500);
     return () => clearInterval(id);
   }, []);
   return (

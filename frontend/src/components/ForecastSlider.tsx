@@ -3,7 +3,7 @@ import { Loader2, Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-r
 import { memo, useMemo, type MouseEvent } from "react";
 import type { HeatMetric, Heatmap } from "../api/types";
 import { formatDayHour, formatDateTime } from "../lib/format";
-import { LEVEL_COLOR, LEVEL_LABEL, METRIC_META, metricLevel } from "../lib/risk";
+import { LEVEL_COLOR, LEVEL_LABEL, LEVEL_TEXT, METRIC_META, metricLevel } from "../lib/risk";
 
 const METRICS: HeatMetric[] = ["risk", "wind", "rain", "snow"];
 const SPEEDS = [2, 4, 8];
@@ -201,7 +201,7 @@ function ForecastSliderImpl(p: Props) {
         {worstNow != null && p.heatmap && (
           <p className="mt-1.5 text-[11px] text-ink-400">
             Worst {meta.label.toLowerCase()} in the corridor at this hour:{" "}
-            <span className="num" style={{ color: LEVEL_COLOR[metricLevel(p.metric, worstNow)] }}>
+            <span className="num" style={{ color: LEVEL_TEXT[metricLevel(p.metric, worstNow)] }}>
               {p.metric === "risk"
                 ? LEVEL_LABEL[metricLevel("risk", worstNow)]
                 : `${worstNow.toFixed(meta.digits)} ${meta.unit}`}

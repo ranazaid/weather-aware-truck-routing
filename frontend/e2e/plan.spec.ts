@@ -28,6 +28,8 @@ test.describe("plan results", () => {
   });
 
   test("the decision table fits the panel whichever rule decides", async ({ page }) => {
+    // Worst case: a wide fallback font, as when web fonts are blocked on Linux or Windows.
+    await page.addStyleTag({ content: "* { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" });
     for (const criterion of ["No Travel miles", "average risk", "travel time"]) {
       await page.route("**/api/plan", async (route) => {
         const response = await route.fetch();

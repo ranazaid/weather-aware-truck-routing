@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-/** Every test runs offline: basemap and web fonts are blocked, so the map uses its built-in fallback style. */
+/** Every test runs offline: the basemap is blocked, so the map uses its built-in fallback style (fonts are bundled). */
 export const test = base.extend({
   page: async ({ page }, use) => {
     await page.route(/basemaps\.cartocdn\.com|tiles\.openfreemap\.org|fonts\.(googleapis|gstatic)\.com/, (r) =>

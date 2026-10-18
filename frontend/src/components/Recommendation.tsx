@@ -98,17 +98,22 @@ export function Recommendation({
                   className={clsx("border-t border-ink-800", isDecisive && "bg-accent/[0.07]")}
                   aria-current={isDecisive ? "true" : undefined}
                 >
-                  <th scope="row" className="px-3 py-1.5 text-left font-normal whitespace-nowrap text-ink-300 sm:px-4">
-                    <span className="num mr-2 text-[10px] text-ink-400">{i + 1}</span>
-                    {c.label}
-                    {isDecisive && (
-                      <span
-                        className="chip ml-1.5 bg-accent/15 px-1.5 text-[10px] text-accent"
-                        title="This rule decided the recommendation"
-                      >
-                        decides
+                  <th scope="row" className="px-3 py-1.5 text-left font-normal text-ink-300 sm:px-4">
+                    {/* the chip wraps under the label when space is short, so the table never overflows */}
+                    <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                      <span className="whitespace-nowrap">
+                        <span className="num mr-2 text-[10px] text-ink-400">{i + 1}</span>
+                        {c.label}
                       </span>
-                    )}
+                      {isDecisive && (
+                        <span
+                          className="chip bg-accent/15 px-1.5 text-[10px] text-accent"
+                          title="This rule decided the recommendation"
+                        >
+                          decides
+                        </span>
+                      )}
+                    </span>
                   </th>
                   {ordered.map((r, j) => {
                     const v = values[j]!;

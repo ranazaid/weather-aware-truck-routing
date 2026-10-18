@@ -10,7 +10,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Checkpoint, HeatMetric, Heatmap, Plan, PlannedRoute } from "../../api/types";
 import { formatDateTime, formatDuration } from "../../lib/format";
-import { LEVEL_COLOR, LEVEL_LABEL, weatherText } from "../../lib/risk";
+import { LEVEL_COLOR, LEVEL_LABEL, LEVEL_TEXT, weatherText } from "../../lib/risk";
 import { truckState, unionBbox } from "../../lib/track";
 import { BASEMAPS, US_VIEW, escapeHtml, heatColor, heatOpacity, heatRadius, segmentColor } from "./style";
 
@@ -72,10 +72,10 @@ function checkpointHtml(route: PlannedRoute, cp: Checkpoint): string {
   const rules = (cp.risk?.factors ?? []).filter((f) => f.rule).map((f) => f.rule!);
   const drivers = cp.risk?.drivers ?? [];
   return `
-    <div style="min-width:220px;font:12px Inter,system-ui,sans-serif">
+    <div style="min-width:220px;font:12px 'Inter Variable',Inter,system-ui,sans-serif">
       <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #1e293b">
         <b style="color:#fff">Route ${escapeHtml(route.label)} · mile ${cp.mile.toFixed(0)}</b>
-        <span style="margin-left:auto;color:${color};background:${color}22;border:1px solid ${color}66;border-radius:999px;padding:1px 8px;font-weight:600;font-size:11px">${LEVEL_LABEL[level]}</span>
+        <span style="margin-left:auto;color:${LEVEL_TEXT[level]};background:${color}22;border:1px solid ${color}66;border-radius:999px;padding:1px 8px;font-weight:600;font-size:11px">${LEVEL_LABEL[level]}</span>
       </div>
       <div style="padding:8px 12px;color:#a7b2c7">
         <div style="color:#e2e8f0;margin-bottom:6px">ETA ${escapeHtml(formatDateTime(cp.eta))}

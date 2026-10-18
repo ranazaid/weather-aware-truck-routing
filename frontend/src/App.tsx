@@ -260,8 +260,12 @@ export default function App() {
                 onFocus={(i) => onFocus(selected.id, i)}
               />
               <p className="px-1 pb-2 text-[10px] leading-relaxed text-ink-400">
-                Routing © OSRM / OpenStreetMap contributors · Forecast © Open-Meteo · Truck speed capped at{" "}
-                {plan.request.truck_speed_cap_mph} mph · Generated {formatDateTime(plan.generated_at)}
+                Routing © OSRM / OpenStreetMap contributors · Forecast ©{" "}
+                {plan.forecast_window.source?.includes("MET")
+                  ? `${plan.forecast_window.source} (backup in use)`
+                  : "Open-Meteo"}{" "}
+                · Truck speed capped at {plan.request.truck_speed_cap_mph} mph · Generated{" "}
+                {formatDateTime(plan.generated_at)}
               </p>
             </>
           ) : (

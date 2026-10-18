@@ -164,7 +164,7 @@ export interface Plan {
     truck_speed_cap_mph: number;
     scenario: { wind_add_mph: number; precip_factor: number; text: string } | null;
   };
-  forecast_window: { start: string; end: string; grid_deg: number };
+  forecast_window: { start: string; end: string; grid_deg: number; source?: string };
   routes: PlannedRoute[];
   recommendation: Recommendation;
   departure_advice: DepartureAdvice;

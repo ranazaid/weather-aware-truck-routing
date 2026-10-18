@@ -118,11 +118,20 @@ def _key(cell: Cell, start: int, end: int) -> str:
     return f"wx:{cell[0]:.2f},{cell[1]:.2f}:{start}:{end}"
 
 
-def fetch(cells, start: int, end: int) -> dict[Cell, Series]:
-    """Hourly series for every cell over [start, end] (unix seconds on the hour), cached per cell."""
+class Forecasts(dict):
+    """Series per cell, plus how many cells came from the backup provider."""
+
+    backup_cells = 0
+
+
+def fetch(cells, start: int, end: int) -> Forecasts:
+    """Hourly series for every cell over [start, end] (unix seconds on the hour), cached per cell.
+
+    Open-Meteo first; any batch it refuses (rate limit, outage) is fetched from MET Norway instead.
+    """
     unique = list(dict.fromkeys(cells))
     found = cache.get_many([_key(c, start, end) for c in unique])
-    out: dict[Cell, Series] = {}
+    out = Forecasts()
     missing: list[Cell] = []
     for c in unique:
         s = found.get(_key(c, start, end))
@@ -131,12 +140,34 @@ def fetch(cells, start: int, end: int) -> dict[Cell, Series]:
         else:
             out[c] = s
     batches = [missing[i : i + BATCH] for i in range(0, len(missing), BATCH)]
+    refused: list[Cell] = []
+    first_error: ProviderError | None = None
     if batches:
         with ThreadPoolExecutor(max_workers=3) as pool:
-            for batch, series in zip(batches, pool.map(lambda b: _download(b, start, end), batches), strict=True):
+            futures = [(b, pool.submit(_download, b, start, end)) for b in batches]
+            for batch, fut in futures:
+                try:
+                    series = fut.result()
+                except ProviderError as e:
+                    if e.status < 500:
+                        raise
+                    log.warning("Open-Meteo refused %d cells (%s); using the backup provider", len(batch), e.code)
+                    refused.extend(batch)
+                    first_error = first_error or e
+                    continue
                 for c, s in zip(batch, series, strict=True):
                     out[c] = s
                 cache.set_many({_key(c, start, end): s for c, s in zip(batch, series, strict=True)}, CACHE_S)
+    if refused:
+        from . import met
+
+        try:
+            backup = met.fetch(refused, start, end)
+        except ProviderError:
+            raise first_error from None  # report the primary problem, which is the one users can act on
+        out.update(backup)
+        out.backup_cells = len(backup)
+        cache.set_many({_key(c, start, end): s for c, s in backup.items()}, CACHE_S)
     log.info("weather: %d cells (%d downloaded in %d requests)", len(unique), len(missing), len(batches))
     return out
 

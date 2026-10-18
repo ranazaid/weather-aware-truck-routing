@@ -97,9 +97,13 @@ PROVIDERS = {
     # Set to an empty string to disable.
     "OSRM_FALLBACK_URL": os.environ.get("OSRM_FALLBACK_URL", "https://routing.openstreetmap.de/routed-car"),
     "OPEN_METEO_URL": os.environ.get("OPEN_METEO_URL", "https://api.open-meteo.com/v1/forecast"),
+    # Backup forecast (MET Norway) for when Open-Meteo is rate-limited or down. Empty disables it.
+    "MET_URL": os.environ.get("MET_URL", "https://api.met.no/weatherapi/locationforecast/2.0/complete"),
     "PHOTON_URL": os.environ.get("PHOTON_URL", "https://photon.komoot.io/api/"),
     "NOMINATIM_URL": os.environ.get("NOMINATIM_URL", "https://nominatim.openstreetmap.org/search"),
-    "USER_AGENT": os.environ.get("PROVIDER_USER_AGENT", "weather-aware-truck-routing/1.0 (assessment demo)"),
+    "USER_AGENT": os.environ.get(
+        "PROVIDER_USER_AGENT", "RouteCast/1.0 (+https://github.com/ranazaid/weather-aware-truck-routing)"
+    ),
     "TIMEOUT_S": float(os.environ.get("PROVIDER_TIMEOUT_S", "20")),
 }
 

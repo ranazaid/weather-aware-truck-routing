@@ -79,8 +79,11 @@ def build(
         vals = [v for frame in metrics[k] for v in frame if v is not None]
         return max(vals) if vals else 0
 
+    backup = getattr(series, "backup_cells", 0)
+    source = "Open-Meteo" if not backup else ("MET Norway" if backup >= len(series) else "Open-Meteo + MET Norway")
     return {
         "hours": HOURS,
+        "source": source,
         "step_s": 3600,
         "departure_ts": int(departure_ts),
         "points": [[lon, lat] for lon, lat in cells],

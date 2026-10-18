@@ -55,6 +55,7 @@ The thresholds are implemented as written. A few points needed a decision, and I
 - **Best time to leave.** For the same trip, the app also scores departures 3, 6, 12 and 24 hours later, using forecasts it has already downloaded. If one of them is safer, it says so ("Leaving 12 h later is safer: Route B cuts Severe miles from 125.0 mi to 0.0 mi") and one click plans that departure.
 - **Shareable links.** The address bar always holds the current trip (`?o=…&d=…&t=…&w=…`), and "Copy link" puts it on the clipboard. Opening the link plans the same trip straight away. If its departure has passed by then, the trip leaves at the next quarter hour and the page says so.
 - **What-if weather.** Real forecasts are often calm, which makes it hard to see the rules working. The form has a What-if section that adds wind and scales precipitation on top of the real forecast. Results built this way carry a "What-if" badge and a warning, and the default is always the real forecast.
+- **Backup providers.** If OSRM's public server is down or rate-limited, routing switches to the FOSSGIS OSRM server. If Open-Meteo refuses a request (its free tier is shared by everyone on the same server IP), those forecasts come from MET Norway instead, converted to the same hourly series, and the page credits the source.
 - **Readable errors.** Every API error has the same shape, `{"error": {"code", "message", "fields"?}}`, and the message is a complete sentence that can go straight into the UI. Field errors appear next to the field. A Retry button only appears when retrying can help (network problems, rate limits, provider outages). If the weather service is busy while the heatmap loads, the app waits for the rate-limit window and retries by itself.
 - **Keyboard.** The place search is a proper ARIA combobox. Space plays or pauses the forecast, and the arrow keys step one hour.
 
@@ -100,7 +101,7 @@ cd frontend && npm ci && npm run dev
 ## Tests
 
 ```bash
-cd backend && pytest                    # 163 tests
+cd backend && pytest                    # 169 tests
 cd frontend && npm test                 # 53 unit and component tests
 cd frontend && npm run build && npm run e2e   # 45 end-to-end tests in Chromium
 cd frontend && npm run e2e:live               # smoke tests against the hosted app
@@ -152,4 +153,4 @@ frontend/
 
 ## Credits
 
-Routing by [OSRM](https://project-osrm.org/) on OpenStreetMap data. Forecasts from [Open-Meteo](https://open-meteo.com/) (CC BY 4.0). Geocoding by [Photon](https://photon.komoot.io/) and Nominatim. Basemap © CARTO and OpenStreetMap contributors. Maps drawn with [MapLibre GL JS](https://maplibre.org/).
+Routing by [OSRM](https://project-osrm.org/) on OpenStreetMap data. Forecasts from [Open-Meteo](https://open-meteo.com/) (CC BY 4.0), with [MET Norway](https://api.met.no/) (CC BY 4.0) as the backup. Geocoding by [Photon](https://photon.komoot.io/) and Nominatim. Basemap © CARTO and OpenStreetMap contributors. Maps drawn with [MapLibre GL JS](https://maplibre.org/).

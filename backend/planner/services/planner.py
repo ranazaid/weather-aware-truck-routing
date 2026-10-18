@@ -61,6 +61,13 @@ def _track(route: routing.Route, cum_drive: list[float], stops: list[hos.Stop], 
         e += TRACK_STEP_S
 
 
+def _source(series) -> str:
+    backup = getattr(series, "backup_cells", 0)
+    if not backup:
+        return "Open-Meteo"
+    return "MET Norway" if backup >= len(series) else "Open-Meteo + MET Norway"
+
+
 def _levels_at(cps, stops, departure_ts, series, res, scenario, load_lb) -> list[tuple[float, Level | None]]:
     """(owned miles, level) for each checkpoint if the truck leaves at `departure_ts`."""
     out = []
@@ -245,7 +252,7 @@ def build_plan(
             "truck_speed_cap_mph": cap,
             "scenario": scenario.as_dict(),
         },
-        "forecast_window": {"start": iso(start), "end": iso(end), "grid_deg": res},
+        "forecast_window": {"start": iso(start), "end": iso(end), "grid_deg": res, "source": _source(series)},
         "routes": out_routes,
         "recommendation": explain(summaries),
         "departure_advice": advice,

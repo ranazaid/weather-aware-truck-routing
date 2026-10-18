@@ -22,6 +22,9 @@ interface Props {
   heatmap: Heatmap | null;
   heatLoading: boolean;
   heatError: string | null;
+  /** Shown while loading, e.g. that a busy weather service is being retried. */
+  heatNote?: string | null;
+  onHeatRetry?: () => void;
   departureMs: number;
   showHeatmap: boolean;
   onShowHeatmap: (v: boolean) => void;
@@ -142,18 +145,25 @@ function ForecastSliderImpl(p: Props) {
       </div>
 
       <div className="mt-3">
+        {(p.heatLoading || p.heatError) && (
+          <div role="status" className="mb-1.5 flex items-center gap-2 text-[11px]">
+            {p.heatLoading && <Loader2 size={12} className="animate-spin text-ink-400" />}
+            <span className={p.heatError ? "text-risk-high" : "text-ink-400"}>
+              {p.heatError ?? p.heatNote ?? "Loading 48-hour corridor forecast…"}
+            </span>
+            {p.heatError && p.onHeatRetry && (
+              <button type="button" onClick={p.onHeatRetry} className="text-accent hover:underline">
+                Retry
+              </button>
+            )}
+          </div>
+        )}
         <div
           className="relative flex h-7 cursor-pointer items-end gap-px"
           onClick={jump}
           aria-hidden
           title={`Worst ${meta.label.toLowerCase()} anywhere in the corridor, by hour`}
         >
-          {p.heatLoading && (
-            <span className="absolute inset-0 flex items-center gap-2 text-[11px] text-ink-400">
-              <Loader2 size={12} className="animate-spin" /> Loading 48-hour corridor forecast…
-            </span>
-          )}
-          {p.heatError && <span className="absolute inset-0 text-[11px] text-risk-high">{p.heatError}</span>}
           {peaks.map((v, i) => {
             const lvl = metricLevel(p.metric, v);
             const h = peakMax > 0 ? Math.max(12, (v / peakMax) * 100) : 12;

@@ -91,3 +91,23 @@ def test_three_routes_ordered():
 def test_explain_requires_routes():
     with pytest.raises(ValueError):
         explain([])
+
+
+def test_departure_advice_suggests_the_earliest_safer_time():
+    from planner.domain.recommend import departure_advice
+
+    now = route("A", [(40, S), (60, L)])
+    later = [(3, route("A", [(20, S), (80, L)])), (6, route("B", [(100, L)])), (12, route("A", [(100, L)]))]
+    advice = departure_advice(now, later)
+    assert advice["best_offset_h"] == 6
+    assert advice["text"] == "Leaving 6 h later is safer: Route B cuts Severe miles from 40.0 mi to 0.0 mi."
+    assert [o["offset_h"] for o in advice["options"]] == [0, 3, 6, 12]
+    assert advice["options"][0]["severe_mi"] == 40
+
+
+def test_departure_advice_stays_quiet_when_now_is_already_safest():
+    from planner.domain.recommend import departure_advice
+
+    now = route("A", [(100, L)], duration_h=8)
+    advice = departure_advice(now, [(3, route("A", [(100, L)], duration_h=7)), (6, route("A", [(50, H), (50, L)]))])
+    assert advice["best_offset_h"] == 0 and advice["text"] is None

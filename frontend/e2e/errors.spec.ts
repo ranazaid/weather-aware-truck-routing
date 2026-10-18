@@ -76,6 +76,45 @@ test.describe("errors and edge cases", () => {
     await expect(page.getByText("Recommended", { exact: true })).toBeVisible(); // routes still usable
   });
 
+  test("a busy weather service is retried automatically for the heatmap", async ({ page }) => {
+    let calls = 0;
+    await page.route("**/heatmap", async (route) => {
+      if (calls++ === 0) {
+        await route.fulfill({
+          status: 503,
+          json: {
+            error: {
+              code: "rate_limited",
+              message: "Open-Meteo weather is busy right now (free-tier request limit). Please try again in a minute.",
+            },
+          },
+        });
+      } else await route.continue();
+    });
+    await page.getByRole("button", { name: /plan routes/i }).click();
+    await expect(page.getByText("Weather service is busy (free-tier limit). Retrying automatically…")).toBeVisible();
+    await expect(page.getByText(/worst risk in the corridor at this hour/i)).toBeVisible({ timeout: 45_000 });
+    expect(calls).toBe(2);
+  });
+
+  test("a heatmap that keeps failing offers a manual retry", async ({ page }) => {
+    let fail = true;
+    await page.route("**/heatmap", async (route) => {
+      if (fail)
+        await route.fulfill({
+          status: 500,
+          json: { error: { code: "server_error", message: "Something went wrong on our side." } },
+        });
+      else await route.continue();
+    });
+    await page.getByRole("button", { name: /plan routes/i }).click();
+    const status = page.locator('section[aria-label="Forecast time"] [role="status"]');
+    await expect(status).toContainText("Something went wrong on our side.");
+    fail = false;
+    await status.getByRole("button", { name: "Retry" }).click();
+    await expect(page.getByText(/worst risk in the corridor at this hour/i)).toBeVisible();
+  });
+
   test("a place typed but not picked is found by the server", async ({ page }) => {
     const destination = page.getByRole("combobox", { name: "Destination" });
     await page.getByRole("button", { name: "Clear destination" }).click();

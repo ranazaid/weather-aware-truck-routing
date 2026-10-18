@@ -142,9 +142,9 @@ test.describe("trip form", () => {
     });
     await page.getByRole("button", { name: /plan routes/i }).click();
     await expect(page.getByRole("button", { name: /planning routes/i })).toBeDisabled();
-    await expect(page.getByRole("status")).toContainText(/routes|truck|forecasts|risk/i);
+    await expect(page.getByRole("status", { name: "Planning progress" })).toContainText(/routes|truck|forecasts|risk/i);
     await expect(page.getByText("Recommended", { exact: true })).toBeVisible();
-    await expect(page.getByRole("status")).toBeHidden();
+    await expect(page.getByRole("status", { name: "Planning progress" })).toBeHidden();
   });
 
   test("Edit reopens the trip as entered and re-plans", async ({ page }) => {

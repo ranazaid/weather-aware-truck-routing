@@ -31,7 +31,7 @@ You enter a trip (origin, destination, departure time and load weight). The app 
 2. Segments faster than 65 mph are slowed to that speed. The public OSRM server only has a car profile, and trucks don't run at car speeds.
 3. With hours of service on (the default), a 30-minute break is added after 8 hours of driving and a 10-hour reset after 11. Without this, any trip longer than a day would be checked against the wrong hour's weather.
 4. Checkpoints go at mile 0, every N miles, and at the destination. Each one gets a driving time and a clock time.
-5. Weather comes from Open-Meteo, one hourly series per 0.1° grid cell (about 7 miles). Routes that overlap share cells, and so does the heatmap, so each cell is downloaded once. Requests go out 50 locations at a time and are cached for 30 minutes.
+5. Weather comes from Open-Meteo, one hourly series per 0.1° grid cell (about 7 miles). Routes that overlap share cells, and so does the heatmap, so each cell is downloaded once. Requests go out 50 locations at a time and are cached for 30 minutes. Open-Meteo's free tier allows 600 locations a minute, so a plan uses at most 250 and its heatmap at most 200. Very long trips (Los Angeles to New York, say) get a coarser grid to stay inside that budget; every checkpoint is still read at its own ETA. The grid is chosen from the roads rather than the checkpoint interval, so switching between 10, 25 and 50 miles reuses the cached forecasts.
 6. Each checkpoint gets a risk level, the routes are summarised by miles per level and ranked, and the result comes back with an explanation.
 
 The heatmap is a separate request (`GET /api/plans/<id>/heatmap`), so routes show up as soon as they are scored and the corridor fills in a second later.
@@ -52,8 +52,10 @@ The thresholds are implemented as written. A few points needed a decision, and I
 
 ## A few extras
 
+- **Best time to leave.** For the same trip, the app also scores departures 3, 6, 12 and 24 hours later, using forecasts it has already downloaded. If one of them is safer, it says so ("Leaving 12 h later is safer: Route B cuts Severe miles from 125.0 mi to 0.0 mi") and one click plans that departure.
+- **Shareable links.** The address bar always holds the current trip (`?o=…&d=…&t=…&w=…`), and "Copy link" puts it on the clipboard. Opening the link plans the same trip straight away. If its departure has passed by then, the trip leaves at the next quarter hour and the page says so.
 - **What-if weather.** Real forecasts are often calm, which makes it hard to see the rules working. The form has a What-if section that adds wind and scales precipitation on top of the real forecast. Results built this way carry a "What-if" badge and a warning, and the default is always the real forecast.
-- **Readable errors.** Every API error has the same shape, `{"error": {"code", "message", "fields"?}}`, and the message is a complete sentence that can go straight into the UI. Field errors appear next to the field. A Retry button only appears when retrying can help (network problems, rate limits, provider outages).
+- **Readable errors.** Every API error has the same shape, `{"error": {"code", "message", "fields"?}}`, and the message is a complete sentence that can go straight into the UI. Field errors appear next to the field. A Retry button only appears when retrying can help (network problems, rate limits, provider outages). If the weather service is busy while the heatmap loads, the app waits for the rate-limit window and retries by itself.
 - **Keyboard.** The place search is a proper ARIA combobox. Space plays or pauses the forecast, and the arrow keys step one hour.
 
 ## API
@@ -79,7 +81,7 @@ curl -X POST http://localhost:8000/api/plan -H 'Content-Type: application/json' 
 
 A place can be free text or an object with `lat` and `lon`. `scenario` is optional, for example `{"wind_add_mph": 15, "precip_factor": 1}`. Departure must be between one hour ago and seven days ahead, load between 0 and 80,000 lb, and the interval 10, 25 or 50.
 
-The response has the three routes (geometry, risk-coloured segments, checkpoints with ETA, weather and assessment, HOS stops, a 15-minute position track, and a summary), the recommendation, and any warnings. The full contract is typed in [`frontend/src/api/types.ts`](frontend/src/api/types.ts).
+The response has the three routes (geometry, risk-coloured segments, checkpoints with ETA, weather and assessment, HOS stops, a 15-minute position track, and a summary), the recommendation, the departure-time advice, and any warnings. The full contract is typed in [`frontend/src/api/types.ts`](frontend/src/api/types.ts).
 
 ## Running it
 
@@ -98,14 +100,14 @@ cd frontend && npm ci && npm run dev
 ## Tests
 
 ```bash
-cd backend && pytest                    # 148 tests
-cd frontend && npm test                 # 46 unit and component tests
-cd frontend && npm run build && npm run e2e   # 39 end-to-end tests in Chromium
+cd backend && pytest                    # 158 tests
+cd frontend && npm test                 # 53 unit and component tests
+cd frontend && npm run build && npm run e2e   # 45 end-to-end tests in Chromium
 ```
 
 - **Backend:** every threshold edge and load rule, the heatmap score against the levels, geometry, checkpoint spacing, the HOS schedule and its inverse, ranking and tie-breaks, the three-route guarantee, forecast interpolation and batching, and the API end to end against fake OSRM and Open-Meteo responses.
 - **Frontend unit tests:** formatting, the thresholds as the UI applies them, truck positions, form validation, keyboard autocomplete, the decision table, route cards, the timeline, the slider, and the app as a whole with a mocked network.
-- **End to end** (Playwright): the real Django server and the production bundle in Chromium, against a small offline stand-in for OSRM, Open-Meteo and Photon (`backend/planner/tests/fake_server.py`). It places a storm on the direct Dallas–Denver route, so the results are known in advance. The tests click every control: example trips, swap, clear, autocomplete, departure and load shortcuts, interval, HOS, what-if, route selection from cards, table and map, checkpoint popups from the timeline and the map, the legend, zoom, playback, metric switching, the hourly strip, keyboard shortcuts and the rules dialog. They also cover error cases (no road route, network down, provider outage, server field errors, expired plan) and a phone layout.
+- **End to end** (Playwright): the real Django server and the production bundle in Chromium, against a small offline stand-in for OSRM, Open-Meteo and Photon (`backend/planner/tests/fake_server.py`). It places a storm on the direct Dallas–Denver route, so the results are known in advance. The tests click every control: example trips, swap, clear, autocomplete, departure and load shortcuts, interval, HOS, what-if, route selection from cards, table and map, checkpoint popups from the timeline and the map, the legend, zoom, playback, metric switching, the hourly strip, keyboard shortcuts, the rules dialog, the departure-time advice and shareable links. They also cover error cases (no road route, network down, provider outage, a busy weather service, server field errors, expired plan) and a phone layout.
 
 GitHub Actions runs lint, formatting, type checks, all three suites and a production build on every push.
 
@@ -118,7 +120,9 @@ docker build -t routecast .
 docker run -p 8000:8000 -e DJANGO_SECRET_KEY=change-me -e DJANGO_ALLOWED_HOSTS=localhost routecast
 ```
 
-`render.yaml` deploys it on Render as it is. Gunicorn runs a single process with eight threads on purpose. Plans are cached in memory, and the heatmap request has to reach the same process. Moving the cache to Redis would remove that limit.
+`render.yaml` deploys it on Render as it is, on the free plan. Gunicorn runs a single process with eight threads on purpose. Plans are cached in memory, and the heatmap request has to reach the same process. Moving the cache to Redis would remove that limit.
+
+Free Render services sleep after 15 idle minutes. The `Keep the demo awake` workflow pings `/api/health` every five minutes once the repository variable `APP_URL` is set.
 
 ## Layout
 

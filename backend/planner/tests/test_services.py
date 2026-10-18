@@ -219,3 +219,48 @@ def test_photon_labels_and_dedupe():
     responses.add(responses.GET, "https://photon.komoot.io/api/", json={"features": feats})
     labels = [r["label"] for r in geocoding.search("Dallas")]
     assert labels == ["Dallas, Texas, US", "Dallas County, Texas, US"]
+
+
+# ------------------------------------------------------------------------------ free-tier budget
+
+
+def test_resolution_keeps_long_trips_within_budget():
+    short = [tuple(c) for c in fakes.line((-97.0, 32.8), (-105.0, 39.7), 30)]
+    assert weather.resolution_for(short, 250) == weather.CELL_DEG  # normal trips keep the fine grid
+    coast = [tuple(c) for c in fakes.line((-118.2, 34.0), (-74.0, 40.7), 900)]  # LA → NY, a point every ~3 mi
+    res = weather.resolution_for(coast, 250)
+    assert res > weather.CELL_DEG
+    assert len({weather.cell_of(c, res) for c in coast}) <= 250
+
+
+def test_window_rounds_to_whole_days_so_replans_reuse_the_cache():
+    short_trip = weather.window(10_000, 10_000 + 11 * 3600)
+    with_rest_stops = weather.window(10_000, 10_000 + 21 * 3600)
+    assert short_trip == with_rest_stops
+    start, end = short_trip
+    assert (end - start) % 86400 == 0 and end >= weather.needed_end(10_000, 10_000 + 21 * 3600)
+
+
+def test_rate_limit_message_after_retries(monkeypatch):
+    import requests
+
+    from planner.services import http
+
+    def boom(*a, **k):
+        raise requests.exceptions.RetryError("too many 429 error responses")
+
+    monkeypatch.setattr(http.session(), "get", boom)
+    with pytest.raises(ProviderError) as e:
+        http.get_json("Open-Meteo weather", "https://api.open-meteo.com/v1/forecast")
+    assert e.value.status == 503 and e.value.code == "rate_limited"
+    assert e.value.message == (
+        "Open-Meteo weather is busy right now (free-tier request limit). Please try again in a minute."
+    )
+
+
+@responses.activate
+def test_plain_429_is_reported_as_rate_limited():
+    responses.add(responses.GET, fakes.METEO, status=429, json={"error": True, "reason": "Minutely API request limit"})
+    with pytest.raises(ProviderError) as e:
+        weather.fetch([(-100.0, 35.0)], 0, 7200)
+    assert e.value.code == "rate_limited"

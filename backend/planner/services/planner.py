@@ -11,7 +11,7 @@ from django.conf import settings
 from django.core.cache import cache
 
 from ..domain import geo, hos
-from ..domain.recommend import explain, summarize
+from ..domain.recommend import departure_advice, explain, rank, summarize
 from ..domain.risk import Level, assess, rules_table
 from ..domain.sampling import place_checkpoints, truck_adjusted_durations
 from . import corridor, routing, weather
@@ -23,6 +23,8 @@ LABELS = "ABC"
 PLAN_TTL_S = 2 * 3600
 TRACK_STEP_S = 15 * 60
 FORECAST_HORIZON_S = 15 * 24 * 3600  # Open-Meteo serves about 16 days ahead
+ADVICE_OFFSETS_H = (3, 6, 12, 24)  # later departures compared for "best time to leave"
+MAX_PLAN_CELLS = 250  # forecast locations per plan; with the heatmap's 200 this stays under 600 a minute
 
 
 def iso(ts: float) -> str:
@@ -59,6 +61,35 @@ def _track(route: routing.Route, cum_drive: list[float], stops: list[hos.Stop], 
         e += TRACK_STEP_S
 
 
+def _levels_at(cps, stops, departure_ts, series, res, scenario, load_lb) -> list[tuple[float, Level | None]]:
+    """(owned miles, level) for each checkpoint if the truck leaves at `departure_ts`."""
+    out = []
+    for cp in cps:
+        s = series.get(weather.cell_of(cp.coord, res))
+        wx = scenario.apply(weather.sample(s, departure_ts + hos.elapsed_for(cp.drive_s, stops))) if s else None
+        out.append(
+            (cp.owned_mi, assess(wx["wind_mph"], wx["rain_in_hr"], wx["snow_in_hr"], load_lb).level if wx else None)
+        )
+    return out
+
+
+def _departure_advice(prepared, dep_ts, series, res, scenario, load_lb, summaries) -> dict:
+    """Re-score every route for later departures, using the forecasts already downloaded."""
+    later = []
+    for offset in ADVICE_OFFSETS_H:
+        t0 = dep_ts + offset * 3600
+        scored = [
+            summarize(
+                LABELS[i], LABELS[i], r.distance_mi, total, _levels_at(cps, stops, t0, series, res, scenario, load_lb)
+            )
+            for i, (r, _cum, stops, cps, total) in enumerate(prepared)
+        ]
+        if any(s.unknown_mi > 0 for s in scored):
+            continue  # beyond the forecast: unknown miles would look falsely safe
+        later.append((offset, rank(scored)[0]))
+    return departure_advice(rank(summaries)[0], later)
+
+
 def build_plan(
     origin: dict,
     destination: dict,
@@ -83,14 +114,25 @@ def build_plan(
         cps = place_checkpoints(r.coords, r.cum_mi, cum_drive, interval_mi)
         prepared.append((r, cum_drive, stops, cps, hos.total_elapsed(cum_drive[-1], stops)))
 
-    start, end = weather.window(dep_ts, dep_ts + max(p[4] for p in prepared))
+    last_eta = dep_ts + max(p[4] for p in prepared)
+    # The window also covers the later departures checked for advice. Open-Meteo charges per location,
+    # not per hour, so the extra day of forecast costs no extra calls.
+    start, end = weather.window(dep_ts, last_eta + max(ADVICE_OFFSETS_H) * 3600)
     horizon = weather.hour_floor(time.time() + FORECAST_HORIZON_S)
     if end > horizon:
         end = horizon
-        warnings.append("Part of the trip is beyond the 15-day forecast; those miles are shown as Unknown.")
+        if weather.needed_end(dep_ts, last_eta) > horizon:
+            warnings.append("Part of the trip is beyond the 15-day forecast; those miles are shown as Unknown.")
     if start >= end:
         raise ProviderError("Planner", "Departure is beyond the forecast range.", status=400, code="out_of_range")
-    series = weather.fetch([weather.cell_of(cp.coord) for p in prepared for cp in p[3]], start, end)
+    points = [cp.coord for p in prepared for cp in p[3]]
+    # The grid depends on the roads, not the chosen interval: sized for a checkpoint every 10 miles, so
+    # switching between 10, 25 and 50 reuses the same cached forecasts.
+    road = [pt for r in routes for pt in geo.sample_points(r.coords, r.cum_mi, 10.0)]
+    res = weather.resolution_for(road, MAX_PLAN_CELLS)
+    if res != weather.CELL_DEG:
+        log.info("long trip: weather grid %.2f° to stay within %d locations", res, MAX_PLAN_CELLS)
+    series = weather.fetch([weather.cell_of(c, res) for c in points], start, end)
 
     out_routes, summaries = [], []
     for idx, (r, cum_drive, stops, cps, total_elapsed) in enumerate(prepared):
@@ -99,7 +141,7 @@ def build_plan(
         for cp in cps:
             elapsed = hos.elapsed_for(cp.drive_s, stops)
             eta = dep_ts + elapsed
-            s = series.get(weather.cell_of(cp.coord))
+            s = series.get(weather.cell_of(cp.coord, res))
             wx = scenario.apply(weather.sample(s, eta)) if s else None
             a = assess(wx["wind_mph"], wx["rain_in_hr"], wx["snow_in_hr"], load_lb) if wx else None
             owned.append((cp.owned_mi, a.level if a else None))
@@ -159,6 +201,8 @@ def build_plan(
         )
         out_routes[-1]["segments"] = _risk_segments(r, checkpoints)
 
+    advice = _departure_advice(prepared, dep_ts, series, res, scenario, load_lb, summaries)
+
     if scenario.active:
         warnings.insert(0, f"What-if scenario: forecasts adjusted by {scenario.describe()}. Not real conditions.")
     if any(s.unknown_mi > 0 for s in summaries) and not any("forecast" in w for w in warnings):
@@ -170,7 +214,9 @@ def build_plan(
     cache.set(
         f"plan:{plan_id}",
         {
-            "lines": [(r.coords, r.cum_mi) for r in routes],
+            # simplified lines are plenty for placing heatmap cells and keep the cache small
+            "lines": [(line, geo.cumulative_miles(line)) for line in (geo.simplify(r.coords, 0.0005) for r in routes)],
+            "res": res,
             "departure_ts": dep_ts,
             "load_lb": load_lb,
             "window": (start, end),
@@ -192,9 +238,10 @@ def build_plan(
             "truck_speed_cap_mph": cap,
             "scenario": scenario.as_dict(),
         },
-        "forecast_window": {"start": iso(start), "end": iso(end)},
+        "forecast_window": {"start": iso(start), "end": iso(end), "grid_deg": res},
         "routes": out_routes,
         "recommendation": explain(summaries),
+        "departure_advice": advice,
         "warnings": warnings,
         "rules": rules_table(),
     }
@@ -208,6 +255,8 @@ def build_heatmap(plan_id: str) -> dict | None:
     ctx = cache.get(f"plan:{plan_id}")
     if ctx is None:
         return None
-    data = corridor.build(ctx["lines"], ctx["departure_ts"], ctx["load_lb"], ctx["window"], ctx.get("scenario"))
+    data = corridor.build(
+        ctx["lines"], ctx["departure_ts"], ctx["load_lb"], ctx["window"], ctx.get("scenario"), ctx.get("res", 0.1)
+    )
     cache.set(key, data, PLAN_TTL_S)
     return data

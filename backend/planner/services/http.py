@@ -50,6 +50,13 @@ def session() -> requests.Session:
 def get_json(provider: str, url: str, params: dict | None = None):
     try:
         r = session().get(url, params=params, timeout=settings.PROVIDERS["TIMEOUT_S"])
+    except requests.exceptions.RetryError as e:  # retries ran out on 429 (or 5xx) responses
+        raise ProviderError(
+            provider,
+            f"{provider} is busy right now (free-tier request limit). Please try again in a minute.",
+            status=503,
+            code="rate_limited",
+        ) from e
     except requests.Timeout as e:
         raise ProviderError(
             provider, f"{provider} timed out. Please try again.", status=504, code="provider_timeout"
@@ -59,7 +66,10 @@ def get_json(provider: str, url: str, params: dict | None = None):
         raise ProviderError(provider, f"{provider} is unreachable right now. Please try again.") from e
     if r.status_code == 429:
         raise ProviderError(
-            provider, f"{provider} rate limit reached. Wait a minute and try again.", status=503, code="rate_limited"
+            provider,
+            f"{provider} is busy right now (free-tier request limit). Please try again in a minute.",
+            status=503,
+            code="rate_limited",
         )
     try:
         data = r.json()

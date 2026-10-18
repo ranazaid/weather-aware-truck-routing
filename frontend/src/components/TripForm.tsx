@@ -69,17 +69,21 @@ interface Props {
   onSubmit: (req: PlanRequest) => void;
   loading: boolean;
   serverErrors?: Record<string, string[]>;
+  /** Start from this trip (a shared link, or a re-plan at another departure time). */
+  initial?: PlanRequest | null;
 }
 
-export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
-  const [origin, setOrigin] = useState<PlaceValue>(PRESETS[0]!.origin);
-  const [destination, setDestination] = useState<PlaceValue>(PRESETS[0]!.destination);
-  const [departure, setDeparture] = useState(() => toLocalInput(nextQuarterHour()));
-  const [load, setLoad] = useState("38000");
-  const [interval, setInterval] = useState<(typeof INTERVALS)[number]>(25);
-  const [hos, setHos] = useState(true);
-  const [windAdd, setWindAdd] = useState(0);
-  const [precipX, setPrecipX] = useState(1);
+export function TripForm({ onSubmit, loading, serverErrors = {}, initial }: Props) {
+  const [origin, setOrigin] = useState<PlaceValue>(initial?.origin ?? PRESETS[0]!.origin);
+  const [destination, setDestination] = useState<PlaceValue>(initial?.destination ?? PRESETS[0]!.destination);
+  const [departure, setDeparture] = useState(() =>
+    toLocalInput(initial ? new Date(initial.departure) : nextQuarterHour()),
+  );
+  const [load, setLoad] = useState(String(initial?.load_lb ?? 38000));
+  const [interval, setInterval] = useState<(typeof INTERVALS)[number]>(initial?.interval_mi ?? 25);
+  const [hos, setHos] = useState(initial?.hos ?? true);
+  const [windAdd, setWindAdd] = useState(initial?.scenario?.wind_add_mph ?? 0);
+  const [precipX, setPrecipX] = useState(initial?.scenario?.precip_factor ?? 1);
   const whatIf = windAdd > 0 || precipX > 1;
   const [touched, setTouched] = useState(false);
 

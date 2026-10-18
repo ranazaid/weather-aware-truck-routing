@@ -16,11 +16,13 @@ from . import weather
 
 HOURS = 48
 OFFSETS_MI = (-40.0, -20.0, 0.0, 20.0, 40.0)
-MAX_CELLS = 360
+MAX_CELLS = 200  # Open-Meteo free tier: keep plan + heatmap under 600 locations a minute
 START_SPACING_MI = 12.0
 
 
-def corridor_cells(lines: list[tuple[list[geo.Coord], list[float]]]) -> list[weather.Cell]:
+def corridor_cells(
+    lines: list[tuple[list[geo.Coord], list[float]]], res: float = weather.CELL_DEG
+) -> list[weather.Cell]:
     """Unique 0.1° cells covering a band about 40 miles either side of each route, capped at MAX_CELLS."""
     spacing = START_SPACING_MI
     while True:
@@ -35,7 +37,7 @@ def corridor_cells(lines: list[tuple[list[geo.Coord], list[float]]]) -> list[wea
                 b = geo.point_at(coords, cum, min(total, m + 3))
                 for off in OFFSETS_MI:
                     p = at if off == 0 or a == b else geo.offset_perpendicular(a, b, at, off)
-                    cells[weather.cell_of(p)] = None
+                    cells[weather.cell_of(p, res)] = None
         if len(cells) <= MAX_CELLS or spacing > 400:
             return list(cells)
         spacing *= 1.35
@@ -46,10 +48,15 @@ def _r(v, nd):
 
 
 def build(
-    lines, departure_ts: float, load_lb: float, win: tuple[int, int], scenario: weather.Scenario | None = None
+    lines,
+    departure_ts: float,
+    load_lb: float,
+    win: tuple[int, int],
+    scenario: weather.Scenario | None = None,
+    res: float = weather.CELL_DEG,
 ) -> dict:
     scenario = scenario or weather.Scenario()
-    cells = corridor_cells(lines)
+    cells = corridor_cells(lines, res)
     series = weather.fetch(cells, *win)
     metrics: dict[str, list[list[float | None]]] = {"risk": [], "wind": [], "rain": [], "snow": []}
     for h in range(HOURS + 1):

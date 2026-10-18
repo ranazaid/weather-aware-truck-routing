@@ -1,7 +1,9 @@
-"""Hourly forecasts from Open-Meteo, batched per 0.1° grid cell and read at the truck's ETA.
+"""Hourly forecasts from Open-Meteo, batched per grid cell and read at the truck's ETA.
 
-* Points are snapped to a 0.1° cell (about 7 miles), finer than the forecast models' native grid in
-  most regions, so three overlapping routes and the corridor heatmap share one download per cell.
+* Points are snapped to a grid cell, 0.1° (about 7 miles) by default, so three overlapping routes and
+  the corridor heatmap share one download per cell. Open-Meteo's free tier allows 600 locations a
+  minute, so very long trips get a coarser grid that keeps a plan within budget (see `resolution_for`).
+  Every checkpoint is still read at its own ETA.
 * Wind speed is an instantaneous hourly value: it is interpolated linearly between hours.
 * Rain, showers and snowfall are totals for the preceding hour, i.e. a rate in in/hr. The truck is
   given the rate of the clock hour it is driving in: an ETA of 13:20 uses the 13:00-14:00 total.
@@ -24,15 +26,24 @@ from .http import ProviderError, get_json
 log = logging.getLogger(__name__)
 
 CELL_DEG = 0.1
+RESOLUTIONS = (0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1.0)
 BATCH = 50
 CACHE_S = 30 * 60
 HOURLY = "wind_speed_10m,wind_gusts_10m,rain,showers,snowfall,temperature_2m,weather_code"
 Cell = tuple[float, float]  # (lon, lat), rounded
 
 
-def cell_of(coord: geo.Coord) -> Cell:
+def cell_of(coord: geo.Coord, res: float = CELL_DEG) -> Cell:
     lon, lat = coord
-    return (round(round(lon / CELL_DEG) * CELL_DEG, 1), round(round(lat / CELL_DEG) * CELL_DEG, 1))
+    return (round(round(lon / res) * res, 2), round(round(lat / res) * res, 2))
+
+
+def resolution_for(coords, max_cells: int) -> float:
+    """The finest grid on which these points need at most `max_cells` forecast locations."""
+    for res in RESOLUTIONS:
+        if len({cell_of(c, res) for c in coords}) <= max_cells:
+            return res
+    return RESOLUTIONS[-1]
 
 
 def hour_floor(ts: float) -> int:
@@ -80,8 +91,8 @@ def _iso_hour(ts: int) -> str:
 
 def _download(cells: list[Cell], start: int, end: int) -> list[Series]:
     params = {
-        "latitude": ",".join(f"{lat:.1f}" for _, lat in cells),
-        "longitude": ",".join(f"{lon:.1f}" for lon, _ in cells),
+        "latitude": ",".join(f"{lat:.2f}" for _, lat in cells),
+        "longitude": ",".join(f"{lon:.2f}" for lon, _ in cells),
         "hourly": HOURLY,
         "wind_speed_unit": "mph",
         "precipitation_unit": "inch",
@@ -104,7 +115,7 @@ def _download(cells: list[Cell], start: int, end: int) -> list[Series]:
 
 
 def _key(cell: Cell, start: int, end: int) -> str:
-    return f"wx:{cell[0]:.1f},{cell[1]:.1f}:{start}:{end}"
+    return f"wx:{cell[0]:.2f},{cell[1]:.2f}:{start}:{end}"
 
 
 def fetch(cells, start: int, end: int) -> dict[Cell, Series]:
@@ -200,8 +211,17 @@ class Scenario:
         return {"wind_add_mph": self.wind_add_mph, "precip_factor": self.precip_factor, "text": self.describe()}
 
 
+def needed_end(departure_ts: float, last_eta_ts: float, heatmap_hours: int = 48) -> int:
+    """Last forecast hour the trip and the heatmap slider need, padded so interpolation never runs out."""
+    return hour_floor(max(departure_ts + heatmap_hours * 3600, last_eta_ts)) + 2 * 3600
+
+
 def window(departure_ts: float, last_eta_ts: float, heatmap_hours: int = 48) -> tuple[int, int]:
-    """A forecast window covering the trip and the heatmap slider, padded so interpolation never runs out."""
+    """Forecast window from the departure hour, rounded up to whole days.
+
+    Rounding means re-planning the same trip with another load, interval or HOS setting asks for the
+    same window, so the cached forecasts are reused instead of downloaded again.
+    """
     start = hour_floor(departure_ts)
-    end = hour_floor(max(departure_ts + heatmap_hours * 3600, last_eta_ts)) + 2 * 3600
-    return start, end
+    days = math.ceil((needed_end(departure_ts, last_eta_ts, heatmap_hours) - start) / 86400)
+    return start, start + days * 86400

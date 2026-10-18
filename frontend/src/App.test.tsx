@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -59,6 +59,7 @@ describe("App", () => {
       return json({ results: [] });
     });
     vi.stubGlobal("fetch", fetchMock);
+    window.history.replaceState(null, "", "/"); // a finished plan writes the trip into the URL
   });
   afterEach(() => vi.unstubAllGlobals());
 
@@ -142,5 +143,44 @@ describe("App", () => {
     await userEvent.click(screen.getByRole("button", { name: /risk rules/i }));
     expect(await screen.findByText("25–34 mph")).toBeInTheDocument();
     expect(screen.getByText(/fewest severe miles/i)).toBeInTheDocument();
+  });
+
+  it("puts the trip in the URL and reopens it from a shared link", async () => {
+    renderApp();
+    await userEvent.click(screen.getByRole("button", { name: /plan routes/i }));
+    await screen.findByRole("heading", { name: /^route c via/i });
+    const shared = window.location.search;
+    expect(shared).toMatch(/[?&]o=32\.77670%2C-96\.79700%2CDallas/);
+    expect(shared).toMatch(/w=38000/);
+
+    cleanup();
+    fetchMock.mockClear();
+    renderApp(); // a fresh visit to the shared URL plans straight away
+    await screen.findByRole("heading", { name: /^route c via/i });
+    const sent = JSON.parse(fetchMock.mock.calls.find(([u]) => String(u).endsWith("/api/plan"))![1].body);
+    expect(sent).toMatchObject({ load_lb: 38000, interval_mi: 25, hos: true });
+    expect(sent.origin).toMatchObject({ label: "Dallas, Texas, US" });
+  });
+
+  it("re-plans at a safer departure time from the advice", async () => {
+    renderApp();
+    await userEvent.click(screen.getByRole("button", { name: /plan routes/i }));
+    await screen.findByText(/Leaving 6 h later is safer/);
+    const first = JSON.parse(fetchMock.mock.calls.find(([u]) => String(u).endsWith("/api/plan"))![1].body);
+    await userEvent.click(screen.getByRole("button", { name: /plan for 6 hours later/i }));
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([u]) => String(u).endsWith("/api/plan"))).toHaveLength(2));
+    const second = JSON.parse(fetchMock.mock.calls.filter(([u]) => String(u).endsWith("/api/plan"))[1]![1].body);
+    expect(Date.parse(second.departure) - Date.parse(makePlan().request.departure)).toBe(6 * 3600_000);
+    expect(second.load_lb).toBe(first.load_lb);
+  });
+
+  it("copies the shareable link", async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderApp();
+    await userEvent.click(screen.getByRole("button", { name: /plan routes/i }));
+    await userEvent.click(await screen.findByRole("button", { name: /copy link/i }));
+    expect(writeText).toHaveBeenCalledWith(window.location.href);
+    expect(await screen.findByText("Link copied")).toBeInTheDocument();
   });
 });

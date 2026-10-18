@@ -1,9 +1,10 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { BookOpen, Pencil } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { BookOpen, Check, Link2, Pencil } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, api } from "./api/client";
 import type { HeatMetric, Plan, PlanRequest } from "./api/types";
 import { CheckpointTimeline } from "./components/CheckpointTimeline";
+import { DepartureOptions } from "./components/DepartureOptions";
 import { ForecastSlider } from "./components/ForecastSlider";
 import { MapLegend } from "./components/MapLegend";
 import { RouteMap } from "./components/map/RouteMap";
@@ -14,13 +15,36 @@ import { EmptyResults, ErrorBanner, PlanningOverlay, ResultsSkeleton, Warnings }
 import { TripForm } from "./components/TripForm";
 import { usePlayback } from "./hooks/usePlayback";
 import { formatDateTime, formatLoad } from "./lib/format";
+import { decodeTrip, encodeTrip } from "./lib/share";
 
 const MAX_HOUR = 48;
+const MAX_DAYS_AHEAD = 7;
+
+const isRateLimited = (err: unknown) => err instanceof ApiError && err.code === "rate_limited";
 
 /** Retrying only helps when the network, a rate limit or a provider outage was the cause. */
 function isRetryable(error: unknown): boolean {
   if (!(error instanceof ApiError)) return true;
   return error.status === 0 || error.status === 429 || error.status >= 500;
+}
+
+function CopyLinkButton() {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setState("copied");
+    } catch {
+      setState("failed");
+    }
+    setTimeout(() => setState("idle"), 2000);
+  };
+  return (
+    <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={copy} aria-live="polite">
+      {state === "copied" ? <Check size={12} /> : <Link2 size={12} />}
+      {state === "copied" ? "Link copied" : state === "failed" ? "Copy failed" : "Copy link"}
+    </button>
+  );
 }
 
 function TripSummary({ plan, onEdit }: { plan: Plan; onEdit: () => void }) {
@@ -43,9 +67,12 @@ function TripSummary({ plan, onEdit }: { plan: Plan; onEdit: () => void }) {
           </p>
         )}
       </div>
-      <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={onEdit}>
-        <Pencil size={12} /> Edit
-      </button>
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={onEdit}>
+          <Pencil size={12} /> Edit
+        </button>
+        <CopyLinkButton />
+      </div>
     </div>
   );
 }
@@ -60,12 +87,17 @@ export default function App() {
   const [formOpen, setFormOpen] = useState(true);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [lastRequest, setLastRequest] = useState<PlanRequest | null>(null);
+  // A shared link (?o=…&d=…) opens straight onto that trip.
+  const [shared] = useState(() => decodeTrip(window.location.search));
+  const [formInit, setFormInit] = useState<PlanRequest | null>(shared?.request ?? null);
+  const [formKey, setFormKey] = useState(0);
   const playback = usePlayback(MAX_HOUR, speed);
   const { reset: resetPlayback, toggle: togglePlayback, setHour } = playback;
 
   const planMut = useMutation({
     mutationFn: api.plan,
-    onSuccess: (p) => {
+    onSuccess: (p, req) => {
+      window.history.replaceState(null, "", `?${encodeTrip(req)}`); // the address bar is now a shareable link
       setSelectedId(p.recommendation.route_id);
       setFocus(null);
       resetPlayback();
@@ -79,6 +111,9 @@ export default function App() {
     queryFn: () => api.heatmap(plan!.plan_id),
     enabled: !!plan,
     staleTime: Infinity,
+    // The free weather tier allows 600 locations a minute: when busy, wait for the window to reset.
+    retry: (count, err) => (isRateLimited(err) ? count < 4 : count < 1),
+    retryDelay: (_count, err) => (isRateLimited(err) ? 20_000 : 1_000),
   });
   const meta = useQuery({ queryKey: ["meta"], queryFn: api.meta, staleTime: Infinity, enabled: rulesOpen && !plan });
 
@@ -88,6 +123,28 @@ export default function App() {
       planMut.mutate(req);
     },
     [planMut],
+  );
+
+  const autoPlanned = useRef(false);
+  useEffect(() => {
+    if (shared && !autoPlanned.current) {
+      autoPlanned.current = true;
+      submit(shared.request);
+    }
+  }, [shared, submit]);
+
+  const replanAt = useCallback(
+    (offsetH: number) => {
+      if (!plan || !lastRequest) return;
+      const req = {
+        ...lastRequest,
+        departure: new Date(Date.parse(plan.request.departure) + offsetH * 3600_000).toISOString(),
+      };
+      setFormInit(req);
+      setFormKey((k) => k + 1); // the form shows the new departure too
+      submit(req);
+    },
+    [plan, lastRequest, submit],
   );
 
   const onSelect = useCallback((id: string) => {
@@ -122,7 +179,12 @@ export default function App() {
   const heatError = heat.error
     ? heat.error instanceof ApiError && heat.error.code === "plan_expired"
       ? "Plan expired: plan the trip again to reload the heatmap."
-      : "Corridor forecast unavailable right now."
+      : heat.error instanceof ApiError && heat.error.status > 0
+        ? heat.error.message
+        : "Corridor forecast unavailable right now."
+    : null;
+  const heatNote = isRateLimited(heat.failureReason)
+    ? "Weather service is busy (free-tier limit). Retrying automatically…"
     : null;
 
   return (
@@ -143,7 +205,13 @@ export default function App() {
           {plan && !formOpen && <TripSummary plan={plan} onEdit={() => setFormOpen(true)} />}
           {/* Kept mounted while collapsed so "Edit" reopens the trip exactly as it was entered. */}
           <div className="panel p-4" hidden={!!plan && !formOpen}>
-            <TripForm onSubmit={submit} loading={planMut.isPending} serverErrors={serverFields} />
+            <TripForm
+              key={formKey}
+              initial={formInit}
+              onSubmit={submit}
+              loading={planMut.isPending}
+              serverErrors={serverFields}
+            />
           </div>
 
           {error && (
@@ -157,8 +225,23 @@ export default function App() {
             <ResultsSkeleton />
           ) : plan && selected ? (
             <>
-              <Warnings items={plan.warnings} />
+              <Warnings
+                items={
+                  shared?.movedDeparture && lastRequest === shared.request
+                    ? [
+                        "This shared trip's departure had already passed, so it now leaves at the next quarter hour.",
+                        ...plan.warnings,
+                      ]
+                    : plan.warnings
+                }
+              />
               <Recommendation plan={plan} selectedId={selected.id} onSelect={onSelect} />
+              <DepartureOptions
+                advice={plan.departure_advice}
+                departure={plan.request.departure}
+                latestMs={Date.now() + MAX_DAYS_AHEAD * 86400_000}
+                onReplan={replanAt}
+              />
               <div className="space-y-2" role="list" aria-label="Route options">
                 {plan.routes.map((r) => (
                   <div role="listitem" key={r.id}>
@@ -228,6 +311,8 @@ export default function App() {
                 heatmap={heat.data ?? null}
                 heatLoading={heat.isLoading}
                 heatError={heatError}
+                heatNote={heatNote}
+                onHeatRetry={() => void heat.refetch()}
                 departureMs={new Date(plan.request.departure).getTime()}
                 showHeatmap={showHeatmap}
                 onShowHeatmap={setShowHeatmap}

@@ -141,3 +141,42 @@ def explain(summaries: list[RouteSummary]) -> dict:
         "order": [s.route_id for s in ordered],
         "comparisons": comparisons,
     }
+
+
+def _risk_key(s: RouteSummary) -> tuple:
+    return s.key()[:4]  # No Travel, Severe, High, average risk: travel time is the same at any departure
+
+
+def departure_advice(now: RouteSummary, later: list[tuple[int, RouteSummary]]) -> dict:
+    """Would leaving later be safer? `now` and `later` hold the best route for each departure.
+
+    Only risk counts here (travel time barely changes with the clock). The earliest of the safest
+    departures is suggested, and only when it is strictly safer than leaving as planned.
+    """
+
+    def row(offset_h: int, s: RouteSummary) -> dict:
+        m = s.miles_by_level
+        return {
+            "offset_h": offset_h,
+            "route_id": s.route_id,
+            "label": s.label,
+            "no_travel_mi": round(m.get(Level.NO_TRAVEL, 0.0), 1),
+            "severe_mi": round(m.get(Level.SEVERE, 0.0), 1),
+            "high_mi": round(m.get(Level.HIGH, 0.0), 1),
+            "avg_risk": round(s.avg_risk, 2),
+            "duration_s": round(s.duration_s),
+        }
+
+    options = [row(0, now)] + [row(h, s) for h, s in later]
+    best_h, best = min([(0, now), *later], key=lambda o: (_risk_key(o[1]), o[0]))
+    text = None
+    if best_h > 0 and _risk_key(best) < _risk_key(now):
+        d = decisive_criterion(best, now)
+        assert d is not None  # the risk keys differ, so some criterion separates them
+        text = (
+            f"Leaving {best_h} h later is safer: Route {best.label} cuts {d['criterion']} "
+            f"from {d['other']} to {d['best']}."
+        )
+    else:
+        best_h = 0
+    return {"options": options, "best_offset_h": best_h, "text": text}

@@ -16,7 +16,12 @@ export function PlanningOverlay() {
   }, []);
   return (
     <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-ink-950/40 backdrop-blur-[1px]">
-      <div className="panel flex items-center gap-3 px-4 py-3" role="status" aria-live="polite">
+      <div
+        className="panel flex items-center gap-3 px-4 py-3"
+        role="status"
+        aria-label="Planning progress"
+        aria-live="polite"
+      >
         <span className="h-5 w-5 animate-spin rounded-full border-2 border-ink-600 border-t-accent" aria-hidden />
         <span className="text-sm text-ink-200">{STEPS[step]}</span>
       </div>

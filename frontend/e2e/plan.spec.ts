@@ -37,10 +37,12 @@ test.describe("plan results", () => {
       });
       if (criterion !== "No Travel miles") await page.getByRole("button", { name: "Edit" }).click();
       await planTrip(page);
-      const table = page.getByRole("table");
+      const table = page.getByRole("table", { name: /how the routes compare/i });
       await expect(table.getByText("decides")).toBeVisible();
-      const overflow = await table.evaluate((t) => t.scrollWidth - (t.parentElement?.clientWidth ?? 0));
-      expect(overflow, `overflow when "${criterion}" decides`).toBeLessThanOrEqual(1);
+      for (const t of [table, page.getByRole("table", { name: /best route for each departure/i })]) {
+        const overflow = await t.evaluate((el) => el.scrollWidth - (el.parentElement?.clientWidth ?? 0));
+        expect(overflow, `overflow when "${criterion}" decides`).toBeLessThanOrEqual(1);
+      }
       await page.unroute("**/api/plan");
     }
   });

@@ -171,3 +171,57 @@ def test_unknown_free_text_place(client):
     r = client.post("/api/plan", body(destination="Nowhereville Zzz"), format="json")
     assert r.status_code == 400
     assert r.json()["error"]["message"] == 'Could not find "Nowhereville Zzz". Try a city and state.'
+
+
+@responses.activate
+def test_coast_to_coast_plan_stays_within_the_weather_budget(client):
+    la, ny = (-118.24, 34.05), (-74.0, 40.71)
+    calls = []
+    responses.add_callback(responses.GET, fakes.OSRM, callback=fakes.osrm_callback([fakes.line(la, ny, 900)]))
+    responses.add_callback(responses.GET, fakes.METEO, callback=fakes.meteo_callback(calls=calls))
+    payload = body(
+        origin={"lat": la[1], "lon": la[0], "label": "LA"},
+        destination={"lat": ny[1], "lon": ny[0], "label": "NY"},
+        interval_mi=10,
+    )
+    p = client.post("/api/plan", payload, format="json").json()
+    assert all(len(r["checkpoints"]) > 200 for r in p["routes"])  # still a checkpoint every 10 miles
+    assert sum(calls) <= 250
+    assert p["forecast_window"]["grid_deg"] > 0.1
+    plan_calls = sum(calls)
+    client.get(f"/api/plans/{p['plan_id']}/heatmap")
+    assert sum(calls) - plan_calls <= 200
+
+
+@responses.activate
+def test_changing_the_interval_reuses_cached_forecasts(client):
+    la, ny = (-118.24, 34.05), (-74.0, 40.71)
+    calls = []
+    responses.add_callback(responses.GET, fakes.OSRM, callback=fakes.osrm_callback([fakes.line(la, ny, 900)]))
+    responses.add_callback(responses.GET, fakes.METEO, callback=fakes.meteo_callback(calls=calls))
+    places = {"origin": {"lat": la[1], "lon": la[0]}, "destination": {"lat": ny[1], "lon": ny[0]}}
+    first = client.post("/api/plan", body(**places, interval_mi=10), format="json").json()
+    downloaded = sum(calls)
+    for interval in (25, 50):
+        p = client.post("/api/plan", body(**places, interval_mi=interval), format="json").json()
+        assert p["forecast_window"]["grid_deg"] == first["forecast_window"]["grid_deg"]
+    assert sum(calls) == downloaded  # nothing new to download
+
+
+@responses.activate
+def test_departure_advice_finds_the_time_after_the_storm(client):
+    # 40 mph everywhere for the first 8 hours after departure, calm afterwards
+    mock_providers(wind_for=lambda lon, lat, h: 40.0 if h < 8 else 10.0)
+    p = client.post("/api/plan", body(), format="json").json()
+    advice = p["departure_advice"]
+    assert [o["offset_h"] for o in advice["options"]] == [0, 3, 6, 12, 24]
+    assert advice["options"][0]["high_mi"] > 0
+    assert advice["best_offset_h"] == 12
+    assert advice["text"].startswith("Leaving 12 h later is safer")
+
+
+@responses.activate
+def test_no_advice_when_leaving_now_is_safest(client):
+    mock_providers()
+    advice = client.post("/api/plan", body(), format="json").json()["departure_advice"]
+    assert advice["best_offset_h"] == 0 and advice["text"] is None

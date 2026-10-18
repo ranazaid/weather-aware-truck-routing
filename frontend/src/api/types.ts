@@ -134,6 +134,23 @@ export interface PlanRequest {
   scenario?: { wind_add_mph: number; precip_factor: number } | null;
 }
 
+export interface DepartureOption {
+  offset_h: number;
+  route_id: string;
+  label: string;
+  no_travel_mi: number;
+  severe_mi: number;
+  high_mi: number;
+  avg_risk: number;
+  duration_s: number;
+}
+
+export interface DepartureAdvice {
+  options: DepartureOption[];
+  best_offset_h: number;
+  text: string | null;
+}
+
 export interface Plan {
   plan_id: string;
   generated_at: string;
@@ -147,9 +164,10 @@ export interface Plan {
     truck_speed_cap_mph: number;
     scenario: { wind_add_mph: number; precip_factor: number; text: string } | null;
   };
-  forecast_window: { start: string; end: string };
+  forecast_window: { start: string; end: string; grid_deg: number };
   routes: PlannedRoute[];
   recommendation: Recommendation;
+  departure_advice: DepartureAdvice;
   warnings: string[];
   rules: Rules;
 }

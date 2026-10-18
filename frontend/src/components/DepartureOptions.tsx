@@ -82,7 +82,7 @@ export function DepartureOptions({ advice, departure, latestMs, onReplan }: Prop
             >
               <th scope="row" className="px-4 py-1.5 text-left font-normal whitespace-nowrap text-ink-200">
                 {o.offset_h === 0 ? "As planned" : `+${o.offset_h} h`}
-                <span className="ml-1 text-ink-500">{formatDayHour(dep + o.offset_h * 3600_000)}</span>
+                <span className="ml-1 text-ink-400">{formatDayHour(dep + o.offset_h * 3600_000)}</span>
               </th>
               <td className="px-2 py-1.5 text-ink-300">{o.label}</td>
               {showNoTravel && <td className="num px-2 py-1.5 text-right">{o.no_travel_mi.toFixed(0)}</td>}

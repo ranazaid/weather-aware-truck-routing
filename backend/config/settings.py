@@ -93,6 +93,9 @@ REST_FRAMEWORK = {
 # Third-party providers: all free and keyless.
 PROVIDERS = {
     "OSRM_URL": os.environ.get("OSRM_URL", "https://router.project-osrm.org"),
+    # Second public OSRM server (FOSSGIS), same API: used when the first is down, slow or rate-limiting.
+    # Set to an empty string to disable.
+    "OSRM_FALLBACK_URL": os.environ.get("OSRM_FALLBACK_URL", "https://routing.openstreetmap.de/routed-car"),
     "OPEN_METEO_URL": os.environ.get("OPEN_METEO_URL", "https://api.open-meteo.com/v1/forecast"),
     "PHOTON_URL": os.environ.get("PHOTON_URL", "https://photon.komoot.io/api/"),
     "NOMINATIM_URL": os.environ.get("NOMINATIM_URL", "https://nominatim.openstreetmap.org/search"),

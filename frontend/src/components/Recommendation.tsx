@@ -99,7 +99,7 @@ export function Recommendation({
                   aria-current={isDecisive ? "true" : undefined}
                 >
                   <th scope="row" className="px-3 py-1.5 text-left font-normal whitespace-nowrap text-ink-300 sm:px-4">
-                    <span className="num mr-2 text-[10px] text-ink-500">{i + 1}</span>
+                    <span className="num mr-2 text-[10px] text-ink-400">{i + 1}</span>
                     {c.label}
                     {isDecisive && (
                       <span

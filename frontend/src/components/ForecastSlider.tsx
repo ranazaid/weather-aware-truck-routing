@@ -190,7 +190,7 @@ function ForecastSliderImpl(p: Props) {
           aria-label="Forecast hour after departure"
           aria-valuetext={`T plus ${whole} hours, ${formatDateTime(at)}`}
         />
-        <div className="num mt-1 flex justify-between text-[10px] text-ink-500" aria-hidden>
+        <div className="num mt-1 flex justify-between text-[10px] text-ink-400" aria-hidden>
           {[0, 12, 24, 36, 48].map((h) => (
             <span key={h}>
               {h === 0 ? "Depart" : `+${h}h`}

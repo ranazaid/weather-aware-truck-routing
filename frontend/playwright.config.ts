@@ -40,6 +40,7 @@ export default defineConfig({
       env: {
         ...(process.env as Record<string, string>),
         OSRM_URL: `http://127.0.0.1:${FAKE}`,
+        OSRM_FALLBACK_URL: "", // stay offline
         OPEN_METEO_URL: `http://127.0.0.1:${FAKE}/v1/forecast`,
         PHOTON_URL: `http://127.0.0.1:${FAKE}/api/`,
         NOMINATIM_URL: `http://127.0.0.1:${FAKE}/search`,

@@ -100,7 +100,7 @@ cd frontend && npm ci && npm run dev
 ## Tests
 
 ```bash
-cd backend && pytest                    # 158 tests
+cd backend && pytest                    # 163 tests
 cd frontend && npm test                 # 53 unit and component tests
 cd frontend && npm run build && npm run e2e   # 45 end-to-end tests in Chromium
 ```

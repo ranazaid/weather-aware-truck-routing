@@ -152,7 +152,7 @@ export function PlaceInput({ label, value, onChange, placeholder, error, icon }:
               >
                 <MapPin size={14} className="shrink-0 text-ink-400" />
                 <span className="truncate">{p.label}</span>
-                {p.kind && <span className="ml-auto text-[10px] text-ink-500 uppercase">{p.kind}</span>}
+                {p.kind && <span className="ml-auto text-[10px] text-ink-400 uppercase">{p.kind}</span>}
               </li>
             ))
           )}

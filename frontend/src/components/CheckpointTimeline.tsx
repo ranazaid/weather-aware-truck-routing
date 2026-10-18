@@ -71,7 +71,7 @@ export function CheckpointTimeline({ route, focused, onFocus }: Props) {
             >
               {item.stop.kind === "rest" ? <Moon size={13} /> : <Coffee size={13} />}
               <span className="font-medium">{item.stop.label}</span>
-              <span className="text-ink-500">mile {item.stop.mile.toFixed(0)}</span>
+              <span className="text-ink-400">mile {item.stop.mile.toFixed(0)}</span>
               <span className="num ml-auto text-ink-400">{formatDateTime(item.stop.starts)}</span>
             </li>
           ) : (
@@ -127,7 +127,7 @@ function CheckpointRow({
           <span className="flex items-center gap-2">
             <span className="num text-xs text-ink-400">mi {cp.mile.toFixed(0)}</span>
             <span className="num truncate text-xs text-ink-200">{formatDateTime(cp.eta)}</span>
-            <span className="num hidden text-[10px] text-ink-500 sm:inline">+{formatDuration(cp.elapsed_s)}</span>
+            <span className="num hidden text-[10px] text-ink-400 sm:inline">+{formatDuration(cp.elapsed_s)}</span>
             <RiskChip level={level} className="ml-auto" />
           </span>
           {w ? (
@@ -142,10 +142,10 @@ function CheckpointRow({
                 {w.snow_in_hr.toFixed(2)} in/hr
               </Metric>
               {w.temp_f != null && <Metric icon={<Thermometer size={11} />}>{w.temp_f.toFixed(0)}°F</Metric>}
-              <span className="text-ink-500">{weatherText(w.weather_code)}</span>
+              <span className="text-ink-400">{weatherText(w.weather_code)}</span>
             </span>
           ) : (
-            <span className="mt-1 block text-[11px] text-ink-500">No forecast available for this time.</span>
+            <span className="mt-1 block text-[11px] text-ink-400">No forecast available for this time.</span>
           )}
           {rules.map((r) => (
             <span key={r} className="mt-1 block text-[11px] font-medium text-risk-high">

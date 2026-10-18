@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 import responses
@@ -264,3 +265,41 @@ def test_plain_429_is_reported_as_rate_limited():
     with pytest.raises(ProviderError) as e:
         weather.fetch([(-100.0, 35.0)], 0, 7200)
     assert e.value.code == "rate_limited"
+
+
+def test_decode_polyline_reference_example():
+    # Google's documented example, at precision 5
+    out = routing.decode_polyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@", precision=5)
+    assert out == pytest.approx([(-120.2, 38.5), (-120.95, 40.7), (-126.453, 43.252)])
+
+
+@responses.activate
+def test_parse_route_accepts_polyline6_geometry():
+    rt = fakes.osrm_route(fakes.line(A, B, 3))
+    rt["geometry"] = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"  # 3 points at precision 5 reads as precision 6 coords
+    r = routing.parse_osrm_route(rt, "fastest")
+    assert len(r.coords) == 3 and r.coords[0] == pytest.approx((-12.02, 3.85))
+
+
+@responses.activate
+def test_falls_back_to_the_second_osrm_server(settings):
+    settings.PROVIDERS = {**settings.PROVIDERS, "OSRM_FALLBACK_URL": "https://fallback.example/routed-car"}
+    responses.add(responses.GET, fakes.OSRM, json={"code": "Error", "message": "overloaded"}, status=503)
+    responses.add_callback(
+        responses.GET,
+        re.compile(r"https://fallback\.example/routed-car/route/v1/driving/.*"),
+        callback=fakes.osrm_callback([fakes.line(A, B)] * 3),
+    )
+    routes, _ = routing.get_routes(A, B)
+    assert len(routes) == 3
+    assert any("fallback.example" in c.request.url for c in responses.calls)
+
+
+@responses.activate
+def test_no_route_does_not_try_the_fallback(settings):
+    settings.PROVIDERS = {**settings.PROVIDERS, "OSRM_FALLBACK_URL": "https://fallback.example/routed-car"}
+    responses.add(responses.GET, fakes.OSRM, json={"code": "NoRoute", "message": "x"}, status=400)
+    with pytest.raises(ProviderError) as e:
+        routing.get_routes(A, B)
+    assert e.value.code == "no_route"
+    assert all("fallback.example" not in c.request.url for c in responses.calls)

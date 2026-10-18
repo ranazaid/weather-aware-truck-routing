@@ -93,26 +93,67 @@ def _perp_distance_deg(p: Coord, a: Coord, b: Coord) -> float:
     return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
 
 
+def thin_indices(coords: Sequence[Coord], min_step_deg: float = 0.0005) -> list[int]:
+    """Indices of points at least `min_step_deg` (≈55 m) apart: a linear pre-pass before Douglas–Peucker."""
+    if len(coords) <= 2:
+        return list(range(len(coords)))
+    keep = [0]
+    lx, ly = coords[0]
+    k = math.cos(math.radians(coords[0][1]))
+    for i in range(1, len(coords) - 1):
+        x, y = coords[i]
+        if ((x - lx) * k) ** 2 + (y - ly) ** 2 >= min_step_deg * min_step_deg:
+            keep.append(i)
+            lx, ly = x, y
+    keep.append(len(coords) - 1)
+    return keep
+
+
+def display_indices(coords: Sequence[Coord], tolerance_deg: float = 0.0008) -> list[int]:
+    """Indices of the vertices to draw: thinned, then Douglas–Peucker. Fast on 30,000-point routes."""
+    thin = thin_indices(coords)
+    sub = [coords[i] for i in thin]
+    return [thin[i] for i in simplify_indices(sub, tolerance_deg)]
+
+
 def simplify(coords: Sequence[Coord], tolerance_deg: float = 0.0008) -> list[Coord]:
     """Iterative Douglas–Peucker (≈90 m tolerance by default). Keeps first and last points."""
+    return [coords[i] for i in simplify_indices(coords, tolerance_deg)]
+
+
+def simplify_indices(coords: Sequence[Coord], tolerance_deg: float = 0.0008) -> list[int]:
     n = len(coords)
     if n <= 2:
-        return list(coords)
+        return list(range(n))
     keep = [False] * n
     keep[0] = keep[-1] = True
     stack = [(0, n - 1)]
+    tol2 = tolerance_deg * tolerance_deg
     while stack:
         s, e = stack.pop()
+        # Same maths as _perp_distance_deg, inlined with the per-segment terms hoisted: this loop is hot.
+        (ax, ay), (bx, by) = coords[s], coords[e]
+        k = math.cos(math.radians((ay + by) / 2))
+        ax, bx = ax * k, bx * k
+        dx, dy = bx - ax, by - ay
+        len2 = dx * dx + dy * dy
         best, idx = 0.0, -1
         for i in range(s + 1, e):
-            d = _perp_distance_deg(coords[i], coords[s], coords[e])
-            if d > best:
-                best, idx = d, i
-        if idx != -1 and best > tolerance_deg:
+            px, py = coords[i][0] * k, coords[i][1]
+            if len2 == 0:
+                qx, qy = px - ax, py - ay
+            else:
+                t = ((px - ax) * dx + (py - ay) * dy) / len2
+                t = 0.0 if t < 0 else 1.0 if t > 1 else t
+                qx, qy = px - (ax + t * dx), py - (ay + t * dy)
+            d2 = qx * qx + qy * qy
+            if d2 > best:
+                best, idx = d2, i
+        if idx != -1 and best > tol2:
             keep[idx] = True
             stack.append((s, idx))
             stack.append((idx, e))
-    return [c for c, k in zip(coords, keep, strict=True) if k]
+    return [i for i, k in enumerate(keep) if k]
 
 
 def bbox(coords: Sequence[Coord]) -> tuple[float, float, float, float]:

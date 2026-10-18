@@ -113,7 +113,11 @@ function el(className: string, html: string, title?: string): HTMLDivElement {
   const d = document.createElement("div");
   d.className = className;
   d.innerHTML = html;
-  if (title) d.title = title;
+  if (title) {
+    d.title = title;
+    d.setAttribute("role", "img"); // MapLibre labels markers; a role makes the label valid for screen readers
+    d.setAttribute("aria-label", title);
+  }
   return d;
 }
 
@@ -501,6 +505,7 @@ function RouteMapImpl(props: MapProps) {
         <div className="absolute inset-0 grid place-items-center bg-ink-950">
           <div
             className="h-8 w-8 animate-spin rounded-full border-2 border-ink-600 border-t-accent"
+            role="status"
             aria-label="Loading map"
           />
         </div>

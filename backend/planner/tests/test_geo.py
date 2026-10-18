@@ -95,3 +95,12 @@ def test_slice_line_on_vertex_boundaries_has_no_duplicates():
     cum = geo.cumulative_miles(coords)
     seg = geo.slice_line(coords, cum, cum[1], cum[2])
     assert seg == pytest.approx([(1.0, 0.0), (2.0, 0.0)])
+
+
+def test_display_indices_thin_long_lines_and_keep_shape():
+    straight = [(x / 10_000, 0.0) for x in range(30_001)]  # 30,000 tiny segments
+    corner = [*straight, (3.0, 1.0)]
+    idx = geo.display_indices(corner)
+    assert idx[0] == 0 and idx[-1] == len(corner) - 1
+    assert len(idx) == 3  # start, the corner, the end
+    assert abs(idx[1] - 30_000) <= 5  # within one thinning step (≈55 m) of the true corner

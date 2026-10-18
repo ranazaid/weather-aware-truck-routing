@@ -11,7 +11,7 @@
   --color-ink-700: #1e293b;
   --color-ink-600: #2a3650;
   --color-ink-500: #475569;
-  --color-ink-400: #7c8aa5;
+  --color-ink-400: #8391aa;
   --color-ink-300: #a7b2c7;
   --color-ink-200: #cbd5e1;
   --color-ink-100: #e2e8f0;
@@ -22,9 +22,9 @@
   --color-risk-low: #22c55e;
   --color-risk-moderate: #eab308;
   --color-risk-high: #f97316;
-  --color-risk-severe: #ef4444;
-  --color-risk-no_travel: #c026d3;
-  --color-risk-unknown: #64748b;
+  --color-risk-severe: #f47272;
+  --color-risk-no_travel: #e46bf2;
+  --color-risk-unknown: #94a3b8;
 }
 
 @layer base {
@@ -64,7 +64,8 @@
     disabled:cursor-not-allowed disabled:opacity-50;
 }
 @utility btn-primary {
-  @apply btn bg-accent-strong text-white shadow-md shadow-sky-900/40 hover:bg-accent disabled:hover:bg-accent-strong;
+  /* dark text on sky blue: 9:1 contrast (white on sky blue was under 3:1) */
+  @apply btn bg-accent font-semibold text-ink-950 shadow-md shadow-sky-900/40 hover:bg-sky-300 disabled:hover:bg-accent;
 }
 @utility btn-ghost {
   @apply btn text-ink-300 hover:bg-ink-800 hover:text-ink-100;

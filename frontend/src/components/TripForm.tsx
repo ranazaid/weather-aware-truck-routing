@@ -236,7 +236,7 @@ export function TripForm({ onSubmit, loading, serverErrors = {}, initial }: Prop
               aria-invalid={!!shown("load_lb")}
               aria-describedby="load-help"
             />
-            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-ink-500">
+            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-ink-400">
               lb
             </span>
           </div>

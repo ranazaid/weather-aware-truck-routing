@@ -53,7 +53,7 @@ function TripSummary({ plan, onEdit }: { plan: Plan; onEdit: () => void }) {
     <div className="panel flex items-start gap-3 p-3.5">
       <div className="min-w-0 flex-1 text-sm">
         <p className="truncate font-semibold text-white">
-          {r.origin.label} <span className="text-ink-500">→</span> {r.destination.label}
+          {r.origin.label} <span className="text-ink-400">→</span> {r.destination.label}
         </p>
         <p className="num mt-0.5 text-xs text-ink-400">
           {formatDateTime(r.departure)} · {formatLoad(r.load_lb)} · every {r.interval_mi} mi · HOS{" "}
@@ -259,7 +259,7 @@ export default function App() {
                 focused={focus?.routeId === selected.id ? focus.index : null}
                 onFocus={(i) => onFocus(selected.id, i)}
               />
-              <p className="px-1 pb-2 text-[10px] leading-relaxed text-ink-500">
+              <p className="px-1 pb-2 text-[10px] leading-relaxed text-ink-400">
                 Routing © OSRM / OpenStreetMap contributors · Forecast © Open-Meteo · Truck speed capped at{" "}
                 {plan.request.truck_speed_cap_mph} mph · Generated {formatDateTime(plan.generated_at)}
               </p>

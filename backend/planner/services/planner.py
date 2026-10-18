@@ -31,7 +31,7 @@ def iso(ts: float) -> str:
     return datetime.fromtimestamp(round(ts), UTC).isoformat().replace("+00:00", "Z")
 
 
-def _risk_segments(route: routing.Route, checkpoints: list[dict]) -> list[dict]:
+def _risk_segments(line: list[geo.Coord], line_mi: list[float], checkpoints: list[dict]) -> list[dict]:
     """Merge neighbouring checkpoints with the same level into coloured stretches of road."""
     out: list[dict] = []
     for cp in checkpoints:
@@ -41,8 +41,8 @@ def _risk_segments(route: routing.Route, checkpoints: list[dict]) -> list[dict]:
         else:
             out.append({"level": level, "from_mi": cp["owned_from_mi"], "to_mi": cp["owned_to_mi"]})
     for seg in out:
-        line = geo.slice_line(route.coords, route.cum_mi, seg["from_mi"], seg["to_mi"])
-        seg["coordinates"] = [[round(x, 5), round(y, 5)] for x, y in geo.simplify(line)]
+        part = geo.slice_line(line, line_mi, seg["from_mi"], seg["to_mi"])
+        seg["coordinates"] = [[round(x, 5), round(y, 5)] for x, y in part]
         seg["from_mi"], seg["to_mi"] = round(seg["from_mi"], 1), round(seg["to_mi"], 1)
     return out
 
@@ -134,6 +134,13 @@ def build_plan(
         log.info("long trip: weather grid %.2f° to stay within %d locations", res, MAX_PLAN_CELLS)
     series = weather.fetch([weather.cell_of(c, res) for c in points], start, end)
 
+    # Simplify each route once, keeping every drawn vertex at its true route mileage, so coloured
+    # segments line up exactly with the checkpoints that own them.
+    display = []
+    for r in routes:
+        keep = geo.display_indices(r.coords)
+        display.append(([r.coords[i] for i in keep], [r.cum_mi[i] for i in keep]))
+
     out_routes, summaries = [], []
     for idx, (r, cum_drive, stops, cps, total_elapsed) in enumerate(prepared):
         label = LABELS[idx]
@@ -189,7 +196,7 @@ def build_plan(
                 "arrival": iso(dep_ts + total_elapsed),
                 "geometry": {
                     "type": "LineString",
-                    "coordinates": [[round(x, 5), round(y, 5)] for x, y in geo.simplify(r.coords)],
+                    "coordinates": [[round(x, 5), round(y, 5)] for x, y in display[idx][0]],
                 },
                 "bbox": [round(v, 4) for v in geo.bbox(r.coords)],
                 "segments": [],  # filled below, once checkpoints exist
@@ -199,7 +206,7 @@ def build_plan(
                 "summary": summary.as_dict(),
             }
         )
-        out_routes[-1]["segments"] = _risk_segments(r, checkpoints)
+        out_routes[-1]["segments"] = _risk_segments(*display[idx], checkpoints)
 
     advice = _departure_advice(prepared, dep_ts, series, res, scenario, load_lb, summaries)
 
@@ -215,7 +222,7 @@ def build_plan(
         f"plan:{plan_id}",
         {
             # simplified lines are plenty for placing heatmap cells and keep the cache small
-            "lines": [(line, geo.cumulative_miles(line)) for line in (geo.simplify(r.coords, 0.0005) for r in routes)],
+            "lines": display,
             "res": res,
             "departure_ts": dep_ts,
             "load_lb": load_lb,

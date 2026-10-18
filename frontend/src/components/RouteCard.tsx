@@ -58,15 +58,15 @@ export function RouteCard({ route, recommended, selected, onSelect }: Props) {
 
       <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
         <div>
-          <dt className="text-ink-500">Distance</dt>
+          <dt className="text-ink-400">Distance</dt>
           <dd className="num mt-0.5 text-ink-100">{formatMiles(route.distance_mi)}</dd>
         </div>
         <div>
-          <dt className="text-ink-500">Door to door</dt>
+          <dt className="text-ink-400">Door to door</dt>
           <dd className="num mt-0.5 text-ink-100">{formatHours(route.duration_s)}</dd>
         </div>
         <div>
-          <dt className="text-ink-500">Worst</dt>
+          <dt className="text-ink-400">Worst</dt>
           <dd className="mt-0.5">
             <RiskChip level={s.max_level} />
           </dd>

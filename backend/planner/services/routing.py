@@ -87,7 +87,11 @@ def remove_loops(coords: list[geo.Coord], seg_s: list[float]) -> tuple[list[geo.
 
 
 def parse_osrm_route(rt: dict, variant: str, via: geo.Coord | None = None) -> Route:
-    coords = [(float(x), float(y)) for x, y in rt["geometry"]["coordinates"]]
+    geometry = rt["geometry"]
+    if isinstance(geometry, str):
+        coords = decode_polyline(geometry)
+    else:  # GeoJSON
+        coords = [(float(x), float(y)) for x, y in geometry["coordinates"]]
     seg_s = [float(s) for leg in rt["legs"] for s in leg.get("annotation", {}).get("duration", [])]
     if len(seg_s) != len(coords) - 1:
         # Annotation missing or misaligned: spread the route duration over segments by length.
@@ -99,13 +103,51 @@ def parse_osrm_route(rt: dict, variant: str, via: geo.Coord | None = None) -> Ro
     return Route(coords, seg_s, sum(seg_s), _road_names(rt.get("legs", [])), variant, via)
 
 
+def decode_polyline(encoded: str, precision: int = 6) -> list[geo.Coord]:
+    """Google encoded polyline (OSRM `polyline6`) to (lon, lat) pairs."""
+    coords: list[geo.Coord] = []
+    index = lat = lon = 0
+    factor = 10.0**precision
+    while index < len(encoded):
+        for axis in (0, 1):
+            shift = result = 0
+            while True:
+                b = ord(encoded[index]) - 63
+                index += 1
+                result |= (b & 0x1F) << shift
+                shift += 5
+                if b < 0x20:
+                    break
+            delta = ~(result >> 1) if result & 1 else result >> 1
+            if axis == 0:
+                lat += delta
+            else:
+                lon += delta
+        coords.append((lon / factor, lat / factor))
+    return coords
+
+
 def _osrm(points: list[geo.Coord], alternatives: int | bool) -> list[dict]:
+    """Ask the primary OSRM server, then the fallback if the primary is unavailable (not for "no route")."""
+    servers = [settings.PROVIDERS["OSRM_URL"], settings.PROVIDERS.get("OSRM_FALLBACK_URL")]
+    servers = [s for s in servers if s]
+    for i, base in enumerate(servers):
+        try:
+            return _osrm_once(base, points, alternatives)
+        except ProviderError as e:
+            if i == len(servers) - 1 or e.status < 500:
+                raise
+            log.warning("OSRM %s failed (%s); trying %s", base, e.message, servers[i + 1])
+    raise AssertionError("unreachable")
+
+
+def _osrm_once(base: str, points: list[geo.Coord], alternatives: int | bool) -> list[dict]:
     path = ";".join(f"{lon:.6f},{lat:.6f}" for lon, lat in points)
-    url = f"{settings.PROVIDERS['OSRM_URL'].rstrip('/')}/route/v1/driving/{path}"
+    url = f"{base.rstrip('/')}/route/v1/driving/{path}"
     params = {
         "alternatives": str(alternatives).lower(),
         "overview": "full",
-        "geometries": "geojson",
+        "geometries": "polyline6",  # less than half the size of GeoJSON, which matters on a small server
         "annotations": "duration",
         "steps": "true",
     }

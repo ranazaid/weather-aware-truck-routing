@@ -16,9 +16,9 @@ export const LEVEL_COLOR: Record<SegmentLevel, string> = {
   low: "#22c55e",
   moderate: "#eab308",
   high: "#f97316",
-  severe: "#ef4444",
-  no_travel: "#c026d3",
-  unknown: "#64748b",
+  severe: "#f47272",
+  no_travel: "#e46bf2",
+  unknown: "#94a3b8",
 };
 
 export const levelIndex = (l: SegmentLevel) => (l === "unknown" ? -1 : LEVELS.indexOf(l));

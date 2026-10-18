@@ -1,6 +1,6 @@
 """Weather risk classification (pure, no I/O).
 
-Implements the thresholds and load rules from the assessment exactly:
+Implements the thresholds and load rules from the brief exactly:
 
     Condition  Low        Moderate    High        Severe      No Travel
     Wind       < 25 mph   25-34       35-44       45-54       >= 55 mph
@@ -182,7 +182,7 @@ def rules_table() -> dict:
     """The thresholds as data, so the UI legend is generated from the same constants the classifier uses."""
 
     def bands(b, unit, nt_inclusive, fmt):
-        # Same wording as the assessment table: integer wind bands end one below the next band
+        # Same wording as the table in the brief: integer wind bands end one below the next band
         # ("25-34"); rain/snow bands share their edges ("0.10-0.25") and No Travel is strictly ">".
         m, h, s, n = b
         top = (lambda v: fmt(v - 1)) if nt_inclusive else fmt

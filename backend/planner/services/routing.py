@@ -28,9 +28,9 @@ MAX_SLOWDOWN = 1.5  # ...and be at most 50% slower than the fastest route
 RELAXED_SLOWDOWN = 2.0
 CACHE_S = 30 * 60
 OSRM_ERRORS = {
-    "NoRoute": ("no drivable road route connects these places", 422, "no_route"),
-    "NoSegment": ("one of the places is too far from any road", 422, "no_road_nearby"),
-    "TooBig": ("the request is too large", 422, "too_big"),
+    "NoRoute": ("No drivable road route connects these places.", 422, "no_route"),
+    "NoSegment": ("One of the places is too far from any road.", 422, "no_road_nearby"),
+    "TooBig": ("This trip is too large for the routing service.", 422, "too_big"),
 }
 
 
@@ -112,7 +112,13 @@ def _osrm(points: list[geo.Coord], alternatives: int | bool) -> list[dict]:
     data, _status = get_json("OSRM routing", url, params)
     code = data.get("code") if isinstance(data, dict) else None
     if code != "Ok":
-        msg, status, err = OSRM_ERRORS.get(code, (data.get("message") or "could not build a route", 502, "routing"))
+        detail = data.get("message") if isinstance(data, dict) else None
+        fallback = (
+            f"The routing service could not build a route ({detail or code or 'unknown error'}).",
+            502,
+            "routing",
+        )
+        msg, status, err = OSRM_ERRORS.get(code, fallback)
         raise ProviderError("OSRM routing", msg, status=status, code=err)
     return data.get("routes", [])
 
@@ -179,7 +185,7 @@ def get_routes(origin: geo.Coord, destination: geo.Coord) -> tuple[list[Route], 
 
     raw = _osrm([origin, destination], alternatives=WANTED)
     if not raw:
-        raise ProviderError("OSRM routing", "returned no routes", status=422, code="no_route")
+        raise ProviderError("OSRM routing", "The routing service returned no routes.", status=422, code="no_route")
     chosen = [parse_osrm_route(raw[0], "fastest")]
     for rt in raw[1:]:
         r = parse_osrm_route(rt, "alternative")

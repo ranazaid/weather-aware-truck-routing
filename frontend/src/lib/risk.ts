@@ -24,7 +24,7 @@ export const LEVEL_COLOR: Record<SegmentLevel, string> = {
 export const levelIndex = (l: SegmentLevel) => (l === "unknown" ? -1 : LEVELS.indexOf(l));
 
 /**
- * Colour stops for each heatmap metric. Breakpoints are the assessment thresholds, so a wind of
+ * Colour stops for each heatmap metric. Breakpoints are the risk thresholds, so a wind of
  * 35 mph is drawn in exactly the "High" orange, and every metric shares one legend.
  */
 export const METRIC_STOPS: Record<HeatMetric, number[]> = {

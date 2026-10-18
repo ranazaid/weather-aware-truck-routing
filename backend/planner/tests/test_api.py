@@ -155,3 +155,19 @@ def test_what_if_scenario_is_applied_and_labelled(client):
 def test_scenario_bounds_are_validated(client):
     r = client.post("/api/plan", body(scenario={"wind_add_mph": 99}), format="json")
     assert r.status_code == 400 and "scenario" in r.json()["error"]["fields"]
+
+
+@responses.activate
+def test_errors_are_complete_sentences(client):
+    responses.add(responses.GET, fakes.OSRM, json={"code": "NoRoute", "message": "Impossible route"}, status=400)
+    r = client.post("/api/plan", body(), format="json")
+    assert r.status_code == 422
+    assert r.json()["error"] == {"code": "no_route", "message": "No drivable road route connects these places."}
+
+
+@responses.activate
+def test_unknown_free_text_place(client):
+    responses.add(responses.GET, "https://photon.komoot.io/api/", json={"features": []})
+    r = client.post("/api/plan", body(destination="Nowhereville Zzz"), format="json")
+    assert r.status_code == 400
+    assert r.json()["error"]["message"] == 'Could not find "Nowhereville Zzz". Try a city and state.'

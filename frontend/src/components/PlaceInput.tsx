@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import clsx from "clsx";
 import { Loader2, MapPin, X } from "lucide-react";
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { api } from "../api/client";
 import type { Place } from "../api/types";
 import { useDebounced } from "../hooks/useDebounced";
@@ -25,6 +25,8 @@ export function PlaceInput({ label, value, onChange, placeholder, error, icon }:
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(blurTimer.current), []);
   const text = placeText(value);
   const picked = typeof value !== "string";
   const q = useDebounced(picked ? "" : text.trim(), 250);
@@ -92,8 +94,13 @@ export function PlaceInput({ label, value, onChange, placeholder, error, icon }:
             setOpen(true);
             setActive(-1);
           }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 120)}
+          onFocus={() => {
+            clearTimeout(blurTimer.current); // refocused (e.g. after Clear): keep suggestions open
+            setOpen(true);
+          }}
+          onBlur={() => {
+            blurTimer.current = setTimeout(() => setOpen(false), 120);
+          }}
           onKeyDown={onKeyDown}
         />
         <span className="absolute top-1/2 right-2 -translate-y-1/2">

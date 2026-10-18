@@ -15,7 +15,7 @@ export const CRITERIA: Row[] = [
   },
   { key: "Severe miles", label: "Severe mi", get: (r) => r.summary.miles_by_level.severe, fmt: (v) => v.toFixed(1) },
   { key: "High miles", label: "High mi", get: (r) => r.summary.miles_by_level.high, fmt: (v) => v.toFixed(1) },
-  { key: "average risk", label: "Avg risk (0–4)", get: (r) => r.summary.avg_risk, fmt: (v) => v.toFixed(2) },
+  { key: "average risk", label: "Avg risk", get: (r) => r.summary.avg_risk, fmt: (v) => v.toFixed(2) },
   { key: "travel time", label: "Travel time", get: (r) => r.duration_s, fmt: (v) => formatHours(v) },
 ];
 
@@ -61,7 +61,10 @@ export function Recommendation({
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <caption className="sr-only">How the routes compare on each ranking rule, applied top to bottom</caption>
+          <caption className="sr-only">
+            How the routes compare on each ranking rule, applied top to bottom. Average risk is distance-weighted, from
+            0 (Low) to 4 (No Travel).
+          </caption>
           <thead>
             <tr className="text-[11px] tracking-wider text-ink-400 uppercase">
               <th scope="col" className="px-3 py-2 text-left font-semibold whitespace-nowrap sm:px-4">
@@ -99,7 +102,10 @@ export function Recommendation({
                     <span className="num mr-2 text-[10px] text-ink-500">{i + 1}</span>
                     {c.label}
                     {isDecisive && (
-                      <span className="chip ml-2 bg-accent/15 text-accent" title="This rule decided the recommendation">
+                      <span
+                        className="chip ml-1.5 bg-accent/15 px-1.5 text-[10px] text-accent"
+                        title="This rule decided the recommendation"
+                      >
                         decides
                       </span>
                     )}

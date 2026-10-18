@@ -95,17 +95,14 @@ describe("TripForm", () => {
     expect(screen.getByLabelText("Origin")).toHaveValue("Denver, Colorado, US");
   });
 
-  it("shows server field errors", () => {
-    render(
-      withQuery(
-        <TripForm
-          onSubmit={vi.fn()}
-          loading={false}
-          serverErrors={{ departure: ["Departure cannot be in the past."] }}
-        />,
-      ),
-    );
-    expect(screen.getByText("Departure cannot be in the past.")).toBeInTheDocument();
+  it("shows server field errors until that field is edited", async () => {
+    const errors = { load_lb: ["Load is too heavy for this test."] };
+    const { rerender } = render(withQuery(<TripForm onSubmit={vi.fn()} loading={false} />));
+    await userEvent.click(screen.getByRole("button", { name: /plan routes/i }));
+    rerender(withQuery(<TripForm onSubmit={vi.fn()} loading={false} serverErrors={errors} />));
+    expect(screen.getByText("Load is too heavy for this test.")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText(/load weight/i), "1");
+    expect(screen.queryByText("Load is too heavy for this test.")).not.toBeInTheDocument();
   });
 });
 
@@ -241,7 +238,7 @@ describe("ForecastSlider", () => {
 });
 
 describe("legend wording", () => {
-  it("uses the assessment's band text", () => {
+  it("uses the brief's band text", () => {
     expect(rangeText("wind", 1)).toBe("25–34");
     expect(rangeText("wind", 4)).toBe("≥ 55 mph");
     expect(rangeText("rain", 1)).toBe("0.10–0.25");

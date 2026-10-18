@@ -87,7 +87,11 @@ export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
     () => validateTrip({ origin, destination, departure, load }),
     [origin, destination, departure, load],
   );
-  const shown = (k: keyof Errors) => (touched ? errors[k] : undefined) ?? serverErrors[k]?.[0];
+  // A server error belongs to the values that were sent; hide it as soon as that field is edited.
+  const [sent, setSent] = useState<Record<keyof Errors, unknown> | null>(null);
+  const current: Record<keyof Errors, unknown> = { origin, destination, departure, load_lb: load };
+  const shown = (k: keyof Errors) =>
+    (touched ? errors[k] : undefined) ?? (sent && sent[k] === current[k] ? serverErrors[k]?.[0] : undefined);
   const minDeparture = toLocalInput(new Date(Date.now() - 3600_000));
   const maxDeparture = toLocalInput(new Date(Date.now() + MAX_DAYS_AHEAD * 86400_000));
 
@@ -95,6 +99,7 @@ export function TripForm({ onSubmit, loading, serverErrors = {} }: Props) {
     e.preventDefault();
     setTouched(true);
     if (Object.keys(errors).length > 0) return;
+    setSent(current);
     onSubmit({
       origin,
       destination,

@@ -93,12 +93,13 @@ def _download(cells: list[Cell], start: int, end: int) -> list[Series]:
     }
     data, status = get_json("Open-Meteo weather", settings.PROVIDERS["OPEN_METEO_URL"], params)
     if isinstance(data, dict) and data.get("error"):
-        raise ProviderError("Open-Meteo weather", data.get("reason", "rejected the request"), status=502)
+        reason = data.get("reason") or "no reason given"
+        raise ProviderError("Open-Meteo weather", f"Open-Meteo rejected the forecast request: {reason}", status=502)
     if status >= 400:
-        raise ProviderError("Open-Meteo weather", f"returned HTTP {status}")
+        raise ProviderError("Open-Meteo weather", f"Open-Meteo returned HTTP {status}.")
     locations = data if isinstance(data, list) else [data]
     if len(locations) != len(cells):
-        raise ProviderError("Open-Meteo weather", "returned the wrong number of locations")
+        raise ProviderError("Open-Meteo weather", "Open-Meteo returned the wrong number of locations.")
     return [parse_location(loc) for loc in locations]
 
 

@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { HeatMetric } from "../api/types";
 import { LEVEL_COLOR, LEVEL_LABEL, LEVELS, METRIC_META, METRIC_STOPS } from "../lib/risk";
 
-/** Band text in the assessment's own wording: wind "25–34", rain "0.10–0.25", snow "0.5–1.0". */
+/** Band text worded as in the brief: wind "25–34", rain "0.10–0.25", snow "0.5–1.0". */
 export function rangeText(metric: HeatMetric, i: number): string {
   if (metric === "risk") return "";
   const s = METRIC_STOPS[metric];

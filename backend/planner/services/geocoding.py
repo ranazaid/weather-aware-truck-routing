@@ -45,7 +45,7 @@ def _photon_label(p: dict) -> str:
 def _photon(q: str, limit: int) -> list[dict]:
     data, status = get_json("Photon geocoder", settings.PROVIDERS["PHOTON_URL"], {"q": q, "limit": limit, "lang": "en"})
     if status >= 400:
-        raise ProviderError("Photon geocoder", f"returned HTTP {status}")
+        raise ProviderError("Photon geocoder", f"Place search (Photon) returned HTTP {status}.")
     results = []
     for f in data.get("features", []):
         lon, lat = f["geometry"]["coordinates"][:2]
@@ -58,7 +58,7 @@ def _nominatim(q: str, limit: int) -> list[dict]:
     params = {"q": q, "format": "jsonv2", "limit": limit, "addressdetails": 1}
     data, status = get_json("Nominatim geocoder", settings.PROVIDERS["NOMINATIM_URL"], params)
     if status >= 400 or not isinstance(data, list):
-        raise ProviderError("Nominatim geocoder", f"returned HTTP {status}")
+        raise ProviderError("Nominatim geocoder", f"Place search (Nominatim) returned HTTP {status}.")
     results = []
     for item in data:
         a = item.get("address", {})
@@ -105,5 +105,7 @@ def resolve(value) -> dict:
         return _place(label, lat, lon, value.get("kind"))
     results = search(str(value), limit=1)
     if not results:
-        raise ProviderError("Geocoder", f'could not find "{value}"', status=400, code="place_not_found")
+        raise ProviderError(
+            "Geocoder", f'Could not find "{value}". Try a city and state.', status=400, code="place_not_found"
+        )
     return results[0]

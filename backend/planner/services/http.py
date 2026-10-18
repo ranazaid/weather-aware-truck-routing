@@ -15,7 +15,10 @@ _local = threading.local()
 
 
 class ProviderError(Exception):
-    """A third-party service failed or returned something unusable. Message is safe to show users."""
+    """A third-party service failed or returned something unusable.
+
+    `message` is a complete sentence that is safe to show to users as-is.
+    """
 
     def __init__(self, provider: str, message: str, *, status: int = 502, code: str = "provider_error"):
         super().__init__(f"{provider}: {message}")
@@ -48,16 +51,20 @@ def get_json(provider: str, url: str, params: dict | None = None):
     try:
         r = session().get(url, params=params, timeout=settings.PROVIDERS["TIMEOUT_S"])
     except requests.Timeout as e:
-        raise ProviderError(provider, "timed out; please try again", status=504, code="provider_timeout") from e
+        raise ProviderError(
+            provider, f"{provider} timed out. Please try again.", status=504, code="provider_timeout"
+        ) from e
     except requests.RequestException as e:
         log.warning("%s request failed: %s", provider, e)
-        raise ProviderError(provider, "is unreachable right now; please try again") from e
+        raise ProviderError(provider, f"{provider} is unreachable right now. Please try again.") from e
     if r.status_code == 429:
-        raise ProviderError(provider, "rate limit reached; wait a minute and retry", status=503, code="rate_limited")
+        raise ProviderError(
+            provider, f"{provider} rate limit reached. Wait a minute and try again.", status=503, code="rate_limited"
+        )
     try:
         data = r.json()
     except ValueError as e:
-        raise ProviderError(provider, f"returned an unreadable response (HTTP {r.status_code})") from e
+        raise ProviderError(provider, f"{provider} returned an unreadable response (HTTP {r.status_code}).") from e
     if r.status_code >= 400 and not isinstance(data, dict):
-        raise ProviderError(provider, f"returned HTTP {r.status_code}")
+        raise ProviderError(provider, f"{provider} returned HTTP {r.status_code}.")
     return data, r.status_code

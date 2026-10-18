@@ -17,6 +17,12 @@ import { formatDateTime, formatLoad } from "./lib/format";
 
 const MAX_HOUR = 48;
 
+/** Retrying only helps when the network, a rate limit or a provider outage was the cause. */
+function isRetryable(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return true;
+  return error.status === 0 || error.status === 429 || error.status >= 500;
+}
+
 function TripSummary({ plan, onEdit }: { plan: Plan; onEdit: () => void }) {
   const r = plan.request;
   return (
@@ -143,11 +149,7 @@ export default function App() {
           {error && (
             <ErrorBanner
               message={error instanceof Error ? error.message : "Planning failed."}
-              onRetry={
-                lastRequest && !(error instanceof ApiError && error.status === 400)
-                  ? () => submit(lastRequest)
-                  : undefined
-              }
+              onRetry={lastRequest && isRetryable(error) ? () => submit(lastRequest) : undefined}
             />
           )}
 

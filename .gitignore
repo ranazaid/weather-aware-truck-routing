@@ -17,3 +17,5 @@ docs/*.pdf
 
 # private notes for the author
 .local/
+playwright-report/
+test-results/

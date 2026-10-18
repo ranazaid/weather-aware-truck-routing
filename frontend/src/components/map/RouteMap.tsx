@@ -153,6 +153,8 @@ function RouteMapImpl(props: MapProps) {
         fadeDuration: 0,
       });
       mapRef.current = map;
+      // Browser automation only (navigator.webdriver): lets end-to-end tests inspect layers and project points.
+      if (navigator.webdriver) (window as unknown as { __routecastMap?: MLMap }).__routecastMap = map;
       map.touchZoomRotate.disableRotation();
       map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
       map.addControl(new maplibregl.ScaleControl({ unit: "imperial" }), "top-right");
@@ -208,7 +210,7 @@ function RouteMapImpl(props: MapProps) {
       source: "segments",
       layout: line,
       filter: ["!", ["get", "selected"]],
-      paint: { "line-color": segmentColor, "line-width": 3.5, "line-opacity": 0.55 },
+      paint: { "line-color": segmentColor, "line-width": 3.5, "line-opacity": 0.85 },
     });
     map.addLayer({
       id: "segments-sel",

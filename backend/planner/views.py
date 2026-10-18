@@ -30,7 +30,7 @@ def _error(code: str, message: str, http_status: int, fields=None) -> Response:
 def api_exception_handler(exc, context):
     """Every API error has the same shape: {"error": {"code", "message", "fields"?}}."""
     if isinstance(exc, ProviderError):
-        return _error(exc.code, f"{exc.provider} {exc.message}", exc.status)
+        return _error(exc.code, exc.message, exc.status)
     if isinstance(exc, ValidationError):
         detail = exc.detail if isinstance(exc.detail, dict) else {"non_field_errors": exc.detail}
         fields = {k: [str(m) for m in (v if isinstance(v, list) else [v])] for k, v in detail.items()}

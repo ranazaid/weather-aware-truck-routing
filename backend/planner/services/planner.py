@@ -89,7 +89,7 @@ def build_plan(
         end = horizon
         warnings.append("Part of the trip is beyond the 15-day forecast; those miles are shown as Unknown.")
     if start >= end:
-        raise ProviderError("Planner", "departure is beyond the forecast range", status=400, code="out_of_range")
+        raise ProviderError("Planner", "Departure is beyond the forecast range.", status=400, code="out_of_range")
     series = weather.fetch([weather.cell_of(cp.coord) for p in prepared for cp in p[3]], start, end)
 
     out_routes, summaries = [], []

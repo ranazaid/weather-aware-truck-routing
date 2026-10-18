@@ -1,6 +1,6 @@
 """Route summaries and recommendation (pure).
 
-Ranking key, lexicographic (PDF "Route Recommendation", plus a guard that comes first):
+Ranking key, compared in order (the brief's order, with a No Travel guard in front):
   0. fewest No Travel miles        - a route that must not be driven is never "safest"
   1. fewest Severe miles
   2. fewest High miles

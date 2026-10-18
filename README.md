@@ -110,7 +110,7 @@ cd frontend && npm run e2e:live               # smoke tests against the hosted a
 - **Frontend unit tests:** formatting, the thresholds as the UI applies them, truck positions, form validation, keyboard autocomplete, the decision table, route cards, the timeline, the slider, and the app as a whole with a mocked network.
 - **End to end** (Playwright): the real Django server and the production bundle in Chromium, against a small offline stand-in for OSRM, Open-Meteo and Photon (`backend/planner/tests/fake_server.py`). It places a storm on the direct Dallas–Denver route, so the results are known in advance. The tests click every control: example trips, swap, clear, autocomplete, departure and load shortcuts, interval, HOS, what-if, route selection from cards, table and map, checkpoint popups from the timeline and the map, the legend, zoom, playback, metric switching, the hourly strip, keyboard shortcuts, the rules dialog, the departure-time advice and shareable links. They also cover error cases (no road route, network down, provider outage, a busy weather service, server field errors, expired plan) and a phone layout.
 
-GitHub Actions runs lint, formatting, type checks, all three suites and a production build on every push.
+GitHub Actions runs lint, formatting, type checks, all three suites and a production build on every push. When everything passes on `main`, it triggers a Render deploy.
 
 ## Deploying
 
